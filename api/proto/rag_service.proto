@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package rag.v1;
+option go_package = "api/rag/v1;ragv1";
+
+// 定义 RAG 服务接口
+service LLMService {
+  // 1. 核心问答接口 (Server-side Streaming)
+  // Go 发送一个请求，Python 流式返回 Token 和 思维链
+  rpc AskStream (AskRequest) returns (stream AskResponse);
+
+  // 2. 多模态向量化接口
+  // Go 发送图片 URL 或 文本，Python 返回向量
+  rpc EmbedData (EmbedRequest) returns (EmbedResponse);
+}
+
+message AskRequest {
+  string query = 1;         // 用户问题
+  string session_id = 2;    // 会话ID (用于多轮对话记忆)
+  string user_id = 3;       // 租户隔离
+  bool use_search = 4;      // 是否开启联网/混合检索
+  bool use_graph = 5;       // 是否开启图谱增强
+  string image_url = 6;     // 用户上传的图片 URL，可选
+}
+
+message AskResponse {
+  // 两个字段可能不同时返回
+  string answer_delta = 1;  // LLM 生成的正文片段 (流式吐字)
+  string thinking_log = 2;  // 思维链日志
+
+  // 结构化引用来源 (前端展示用)
+  repeated Reference source_docs = 3;
+}
+
+message Reference {
+  string doc_name = 1;      // 文档名
+  string page_num = 2;      // 页码
+  float score = 3;          // 相关度分数
+}
+
+message EmbedRequest {
+  oneof data {
+    string text = 1;        // 需要向量化的文本
+    string image_url = 2;   // 需要向量化的图片
+  }
+}
+
+message EmbedResponse {
+  repeated float vector = 1; // 返回 768 或 1024 维向量
+}

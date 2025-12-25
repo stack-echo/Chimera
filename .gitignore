@@ -1,0 +1,26 @@
+# --- IDE & OS ---
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# --- Golang ---
+/backend-go/bin/
+/backend-go/vendor/
+go.sum
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+*.egg-info/
+
+# --- Project Specific ---
+# 忽略 Docker 挂载的本地数据目录
+/local_data/
+# 忽略环境变量文件
+.env
+*.pem
