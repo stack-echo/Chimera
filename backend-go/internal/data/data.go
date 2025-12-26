@@ -110,3 +110,34 @@ func createCollection(client *qdrant.Client) {
 		log.Println("🎉 Qdrant 连接成功 (Collection 'chimera_docs' 已存在)")
 	}
 }
+
+// SearchSimilar 核心检索功能 (使用最新的 Query API)
+func (d *Data) SearchSimilar(ctx context.Context, vector []float32, topK uint64) ([]string, error) {
+	// 将 vector 转为 SDK 需要的格式
+	queryVal := make([]float32, len(vector))
+	copy(queryVal, vector)
+
+	// 使用 Query 接口 (这是 Qdrant 的新标准)
+	points, err := d.Qdrant.Query(ctx, &qdrant.QueryPoints{
+		CollectionName: "chimera_docs",
+		Query:          qdrant.NewQuery(queryVal...), // 使用 NewQuery 包装向量
+		Limit:          &topK,
+		WithPayload: &qdrant.WithPayloadSelector{
+			SelectorOptions: &qdrant.WithPayloadSelector_Enable{
+				Enable: true,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var results []string
+	for _, point := range points {
+		if val, ok := point.Payload["filename"]; ok {
+			results = append(results, val.GetStringValue())
+		}
+	}
+
+	return results, nil
+}

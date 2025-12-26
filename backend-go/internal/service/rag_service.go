@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"io"
+	"fmt"
 	"log"
 	"mime/multipart"
 	"path/filepath"
@@ -30,46 +30,54 @@ func NewRagService(client pb.LLMServiceClient, data *data.Data) *RagService {
 // StreamChat 核心逻辑：调用 gRPC 并把结果推到一个 channel 里给 Handler 用
 // 返回一个只读 channel，Handler 只需要从里面读字符串即可
 func (s *RagService) StreamChat(ctx context.Context, req *pb.AskRequest) (<-chan string, error) {
-	// 1. 调用 Python gRPC
-	stream, err := s.grpcClient.AskStream(ctx, req)
-	if err != nil {
-		return nil, err
-	}
 
-	// 2. 创建一个管道，用于把 gRPC 的数据“搬运”给 HTTP
+	// 1. 创建一个管道，用于把 gRPC 的数据“搬运”给 HTTP
 	// 使用带缓冲的 channel 防止阻塞
 	respChan := make(chan string, 10)
 
-	// 3. 启动协程后台搬运
+	// 2. 启动协程后台搬运
 	go func() {
 		defer close(respChan) // 搬运结束关闭管道
 
-		for {
-			// 从 Python 收数据
-			resp, err := stream.Recv()
-			if err == io.EOF {
-				return // 流结束
-			}
-			if err != nil {
-				log.Printf("gRPC Recv error: %v", err)
-				respChan <- "ERR: " + err.Error() // 简单处理错误
-				return
-			}
+		// 1. 发送 "思考中" 信号
+		respChan <- "THINKing: 正在理解您的问题..."
 
-			// 处理业务逻辑：这里可以将 ThinkingLog 和 Answer 拼成特定格式给前端
-			// 或者通过 SSE 的 event type 区分
-			// 这里演示最简单的：直接发 JSON 字符串给前端解析，或者简单拼接
-
-			// 场景 A: 发送思考过程
-			if resp.ThinkingLog != "" {
-				respChan <- "THINKing: " + resp.ThinkingLog
-			}
-
-			// 场景 B: 发送答案
-			if resp.AnswerDelta != "" {
-				respChan <- "ANSWER: " + resp.AnswerDelta
-			}
+		// 2. 调用 Python 进行 Query 向量化
+		// 注意：这里我们复用 EmbedData 接口
+		embResp, err := s.grpcClient.EmbedData(ctx, &pb.EmbedRequest{
+			Data: &pb.EmbedRequest_Text{Text: req.Query},
+		})
+		if err != nil {
+			respChan <- "ERR: 向量化服务异常 - " + err.Error()
+			return
 		}
+
+		respChan <- fmt.Sprintf("THINKing: 意图识别完成，生成查询向量 (%d 维)...", len(embResp.Vector))
+
+		// 3. 去 Qdrant 检索
+		docs, err := s.data.SearchSimilar(ctx, embResp.Vector, 3) // 找最相似的3个
+		if err != nil {
+			respChan <- "ERR: 知识库检索失败 - " + err.Error()
+			return
+		}
+
+		if len(docs) == 0 {
+			respChan <- "ANSWER: 抱歉，知识库中没有找到相关内容。"
+			return
+		}
+
+		// 4. (临时) 直接把搜到的文件名返回，证明检索成功
+		// 下一步我们再接入 LLM 做润色
+		respChan <- "THINKing: 已在知识库中定位到相关文档，正在整理..."
+
+		respChan <- "ANSWER: 根据您的查询，我在知识库中找到了以下线索：\n\n"
+		for i, docName := range docs {
+			// 模拟打字机效果，把搜索结果打出来
+			line := fmt.Sprintf("%d. 📄 来源文档: %s\n", i+1, docName)
+			respChan <- "ANSWER: " + line
+		}
+
+		respChan <- "ANSWER: \n(以上是基于向量检索的真实结果，RAG 链路已跑通！)"
 	}()
 
 	return respChan, nil
