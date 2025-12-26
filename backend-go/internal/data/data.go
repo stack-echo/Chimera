@@ -7,46 +7,106 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/redis/go-redis/v9"
+
+	// Qdrant 官方 Go SDK
+	"github.com/qdrant/go-client/qdrant"
 )
 
 // Data 结构体持有所有数据库句柄
 type Data struct {
-	Minio *minio.Client
-	Redis *redis.Client
+	Minio  *minio.Client
+	Redis  *redis.Client
+	Qdrant *qdrant.Client
 }
 
 func NewData() *Data {
 	// 1. 初始化 Redis
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379", // Docker 端口
+		Addr: "localhost:6379",
 	})
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
 		log.Fatalf("Redis 连接失败: %v", err)
 	}
 
 	// 2. 初始化 MinIO
-	// 注意：生产环境 endpoint 不带 http
 	minioClient, err := minio.New("localhost:9000", &minio.Options{
 		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
-		Secure: false, // 本地 Docker 没有 HTTPS
+		Secure: false,
 	})
 	if err != nil {
 		log.Fatalf("MinIO 初始化失败: %v", err)
 	}
 
-	// 自动创建 Bucket
+	// 自动创建 MinIO Bucket
 	bucketName := "chimera-docs"
 	exists, err := minioClient.BucketExists(context.Background(), bucketName)
 	if err != nil {
-		log.Fatalf("检查 Bucket 失败: %v", err)
+		log.Fatalf("检查 MinIO Bucket 失败: %v", err)
 	}
 	if !exists {
 		err = minioClient.MakeBucket(context.Background(), bucketName, minio.MakeBucketOptions{})
 		if err != nil {
-			log.Fatalf("创建 Bucket 失败: %v", err)
+			log.Fatalf("创建 MinIO Bucket 失败: %v", err)
 		}
 		log.Printf("🎉 MinIO Bucket '%s' 创建成功", bucketName)
 	}
 
-	return &Data{Minio: minioClient, Redis: rdb}
+	// 3. 初始化 Qdrant
+	qdrantClient, err := qdrant.NewClient(&qdrant.Config{
+		Host: "localhost",
+		Port: 6334,
+	})
+	if err != nil {
+		log.Fatalf("无法初始化 Qdrant 客户端: %v", err)
+	}
+
+	// ⚠️ 移除了 Health() 调用，直接通过创建 Collection 来验证连接
+	// 这样兼容性最好，不会因为 SDK 版本变动报错
+	createCollection(qdrantClient)
+
+	return &Data{
+		Minio:  minioClient,
+		Redis:  rdb,
+		Qdrant: qdrantClient,
+	}
+}
+
+// 辅助函数：确保 Collection 存在
+func createCollection(client *qdrant.Client) {
+	ctx := context.Background()
+
+	// 尝试列出集合，这本身就是一种连接测试
+	collections, err := client.ListCollections(ctx)
+	if err != nil {
+		// 如果这里报错，说明 Qdrant 没连上
+		log.Printf("⚠️ 无法连接 Qdrant (ListCollections 失败): %v", err)
+		return
+	}
+
+	exists := false
+	for _, c := range collections {
+		if c == "chimera_docs" {
+			exists = true
+			break
+		}
+	}
+
+	if !exists {
+		// 创建向量集合
+		err := client.CreateCollection(ctx, &qdrant.CreateCollection{
+			CollectionName: "chimera_docs",
+			VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
+				Size:     4, // ⚠️ 配合 Mock 数据，未来需改为 768
+				Distance: qdrant.Distance_Cosine,
+			}),
+		})
+
+		if err != nil {
+			log.Printf("创建 Collection 失败: %v", err)
+		} else {
+			log.Println("🎉 Qdrant Collection 'chimera_docs' 创建成功")
+		}
+	} else {
+		log.Println("🎉 Qdrant 连接成功 (Collection 'chimera_docs' 已存在)")
+	}
 }

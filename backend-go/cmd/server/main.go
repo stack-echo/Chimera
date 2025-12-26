@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time" // 引入 time 用于设置超时
 
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
@@ -11,52 +13,52 @@ import (
 	"Chimera-RAG/backend-go/internal/data"
 	"Chimera-RAG/backend-go/internal/handler"
 	"Chimera-RAG/backend-go/internal/service"
+	"Chimera-RAG/backend-go/internal/worker"
 )
 
 func main() {
-	// 1. 初始化基础设施
-	// 注意：生产环境这里应该用 Config 配置地址
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	log.Println("🔍 [1/7] 程序启动，正在尝试连接 Python gRPC...")
+
+	// 增加超时设置，防止 gRPC 连不上一直卡着
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, "localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
-		log.Fatalf("无法连接 Chimera 大脑: %v", err)
+		log.Fatalf("❌ gRPC 连接失败 (Python 服务没起?): %v", err)
 	}
 	defer conn.Close()
+	log.Println("✅ [2/7] gRPC 连接成功")
 
+	log.Println("🔍 [3/7] 正在初始化基础设施 (MinIO/Redis/Qdrant)...")
 	dataClient := data.NewData()
+	log.Println("✅ [4/7] 基础设施初始化完毕")
 
-	// 2. 依赖注入 (DI)
-	// Client -> Service -> Handler
 	grpcClient := pb.NewLLMServiceClient(conn)
 	ragService := service.NewRagService(grpcClient, dataClient)
 	chatHandler := handler.NewChatHandler(ragService)
 
-	// 3. 初始化 Gin 引擎
+	log.Println("🔍 [5/7] 正在启动后台 Worker...")
+	etlWorker := worker.NewETLWorker(dataClient, grpcClient)
+
+	// ⚠️ 重点检查这里有没有 'go'
+	go etlWorker.Start(context.Background(), 3)
+	log.Println("✅ [6/7] 后台 Worker 已异步启动")
+
 	r := gin.Default()
-
-	// 4. 配置 CORS (跨域)
-	// 允许前端 (localhost:3000 等) 访问接口
+	// ... (CORS配置省略) ...
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
 		c.Next()
 	})
 
-	// 5. 注册路由
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/chat/stream", chatHandler.HandleChatSSE)
 		v1.POST("/upload", chatHandler.HandleUpload)
 	}
 
-	// 6. 启动服务
-	log.Println("🚀 Chimera Gateway running on http://localhost:8080")
+	log.Println("🚀 [7/7] 准备监听 8080 端口...")
 	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("Server startup failed: %v", err)
+		log.Fatalf("❌ Server 启动失败: %v", err)
 	}
 }

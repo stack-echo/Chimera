@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # 1. 业务数据库 (元数据)
   mysql:
     image: mysql:8.0
     container_name: rag_mysql
@@ -15,7 +14,6 @@ services:
     networks:
       - rag_net
 
-  # 2. 缓存与消息队列
   redis:
     image: redis:alpine
     container_name: rag_redis
@@ -25,13 +23,12 @@ services:
     networks:
       - rag_net
 
-  # 3. 对象存储 (存图片/PDF)
   minio:
     image: minio/minio
     container_name: rag_minio
     ports:
-      - "9000:9000"   # API 端口
-      - "9001:9001"   # 控制台端口
+      - "9000:9000"
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -41,58 +38,50 @@ services:
     networks:
       - rag_net
 
-  # 4. 向量数据库
-  # 注意：Milvus 生产环境需要 etcd 和 minio，这里使用 standalone 模式简化
-  milvus-standalone:
-    image: milvusdb/milvus:v2.3.0
-    container_name: rag_milvus
-    command: ["milvus", "run", "standalone"]
-    environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
+  # === 核心替换：使用 Qdrant ===
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rag_qdrant
+    ports:
+      - "6333:6333" # HTTP API
+      - "6334:6334" # gRPC API
     volumes:
-      - ../local_data/milvus:/var/lib/milvus
-    ports:
-      - "19530:19530"
-    depends_on:
-      - "etcd"
-      - "minio"
+      - ../local_data/qdrant:/qdrant/storage
     networks:
       - rag_net
 
-  etcd:
-    image: quay.io/coreos/etcd:v3.5.5
-    environment:
-      - ALLOW_NONE_AUTHENTICATION=yes
-    networks:
-      - rag_net
-
-  # 5. 图数据库 (NebulaGraph Lite)
-  # Nebula 通常需要 graphd, metad, storaged 三个容器
-  # 这里为了演示方便，我们使用官方的 Docker Compose 快速部署脚本核心部分
-  # 如果电脑配置低，这一步可以先注释掉，后续再加
-  nebula-graphd:
-    image: vesoft/nebula-graphd:v3.6.0
-    container_name: rag_nebula_graphd
-    ports:
-      - "9669:9669" # 客户端连接端口
-    networks:
-      - rag_net
-    command: --meta_server_addrs=nebula-metad:9559 --local_ip=nebula-graphd
-
+  # === 核心修改 3: Nebula 增加依赖检查和自动重启 ===
   nebula-metad:
     image: vesoft/nebula-metad:v3.6.0
     container_name: rag_nebula_metad
+    command: --meta_server_addrs=rag_nebula_metad:9559 --local_ip=rag_nebula_metad --ws_ip=rag_nebula_metad --port=9559 --ws_http_port=19559 --data_path=/data/meta
+    volumes:
+      - ../local_data/nebula/meta:/data/meta
     networks:
       - rag_net
-    command: --local_ip=nebula-metad
 
   nebula-storaged:
     image: vesoft/nebula-storaged:v3.6.0
     container_name: rag_nebula_storaged
+    command: --meta_server_addrs=rag_nebula_metad:9559 --local_ip=rag_nebula_storaged --ws_ip=rag_nebula_storaged --port=9779 --ws_http_port=19779 --data_path=/data/storage
+    depends_on:
+      - nebula-metad
+    volumes:
+      - ../local_data/nebula/storage:/data/storage
     networks:
       - rag_net
-    command: --meta_server_addrs=nebula-metad:9559 --local_ip=nebula-storaged
+
+  nebula-graphd:
+    image: vesoft/nebula-graphd:v3.6.0
+    container_name: rag_nebula_graphd
+    ports:
+      - "9669:9669"
+    command: --meta_server_addrs=rag_nebula_metad:9559 --local_ip=rag_nebula_graphd --ws_ip=rag_nebula_graphd --port=9669 --ws_http_port=19669
+    depends_on:
+      - nebula-metad
+    networks:
+      - rag_net
+    restart: on-failure:5  # 修改这里：如果启动失败（因为metad没准备好），自动重启最多5次
 
 networks:
   rag_net:
