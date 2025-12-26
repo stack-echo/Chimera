@@ -1,7 +1,11 @@
 package data
 
 import (
+	"Chimera-RAG/backend-go/internal/conf"
 	"context"
+	"fmt"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"log"
 
 	"github.com/minio/minio-go/v7"
@@ -17,6 +21,7 @@ type Data struct {
 	Minio  *minio.Client
 	Redis  *redis.Client
 	Qdrant *qdrant.Client
+	DB     *gorm.DB
 }
 
 type SearchResult struct {
@@ -25,7 +30,7 @@ type SearchResult struct {
 	Page     int32
 }
 
-func NewData() *Data {
+func NewData(cfg *conf.Config) (*Data, func(), error) {
 	// 1. 初始化 Redis
 	rdb := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
@@ -70,11 +75,33 @@ func NewData() *Data {
 	// 这样兼容性最好，不会因为 SDK 版本变动报错
 	createCollection(qdrantClient)
 
-	return &Data{
+	pgDB, err := NewPostgresDB(cfg)
+	if err != nil {
+		log.Fatalf("无法初始化 Postgres 客户端: %v", err)
+	}
+
+	d := &Data{
 		Minio:  minioClient,
 		Redis:  rdb,
 		Qdrant: qdrantClient,
+		DB:     pgDB,
 	}
+
+	// 构造清理函数
+	cleanup := func() {
+		log.Println("正在关闭数据层资源...")
+
+		// 关闭 Postgres 连接
+		if sqlDB, err := d.DB.DB(); err == nil {
+			sqlDB.Close()
+		}
+
+		// 如果有 Redis 或 Qdrant 的 Close 方法，也在这里调用
+		d.Redis.Close()
+		d.Qdrant.Close()
+	}
+
+	return d, cleanup, nil
 }
 
 // 辅助函数：确保 Collection 存在
@@ -153,4 +180,37 @@ func (d *Data) SearchSimilar(ctx context.Context, vector []float32, topK uint64)
 		results = append(results, res)
 	}
 	return results, nil
+}
+
+// NewPostgresDB 初始化 PG 连接
+func NewPostgresDB(cfg *conf.Config) (*gorm.DB, error) {
+	// 这里的配置需要在 config.yaml 里加，暂时先写死测试，或者你马上去改 config
+	// dsn := "host=localhost user=chimera_user password=chimera_password dbname=chimera_db port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+
+	// 建议从 cfg 读取:
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		"localhost", // 如果是 Docker 内部互联用 "postgres"，本地运行用 "localhost"
+		"reg_user",
+		"reg_password",
+		"reg_db",
+		"5432",
+	)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	// 🔥 核心：自动迁移模式，自动创建表结构
+	if err := db.AutoMigrate(
+		&User{},
+		&Organization{},
+		&KnowledgeBase{},
+		&Document{},
+	); err != nil {
+		return nil, fmt.Errorf("database migration failed: %v", err)
+	}
+
+	log.Println("✅ PostgreSQL connected & Schema migrated!")
+	return db, nil
 }

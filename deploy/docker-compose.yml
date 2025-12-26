@@ -83,6 +83,28 @@ services:
       - rag_net
     restart: on-failure:5  # 修改这里：如果启动失败（因为metad没准备好），自动重启最多5次
 
+  #核心关系型数据库 (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: rag_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: rag_password
+      POSTGRES_DB: rag_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./local_data/postgres:/var/lib/postgresql/data
+    networks:
+      - rag_net
+
+  # 2. 图数据库核心 (NebulaGraph Studio - 可视化管理)
+  # 注意：为了开发环境轻量化，我们暂时先只起 Studio 和核心服务
+  # 完整 Nebula 集群比较重，我们先用 Nebula Docker Compose 单机版核心
+  # 这里为了演示简洁，建议单独起一个 Nebula 专门的 yaml，或者使用 Nebula 官方的 Docker 镜像
+  # 咱们先只加 Postgres，Nebula 稍后单独部署以免把电脑卡死
+
 networks:
   rag_net:
     driver: bridge

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/gin-contrib/cors" // 需执行 go get github.com/gin-contrib/cors
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -17,54 +18,75 @@ import (
 )
 
 func main() {
-	log.Println("🔍 [1/7] 程序启动，正在尝试连接 Python gRPC...")
-
+	// 1. 加载配置
 	cfg := conf.LoadConfig()
-	maxMsgSize := 100 * 1024 * 1024
 
+	// 2. 初始化 gRPC 连接 (Python AI Service)
+	// 设置 100MB 限制以支持大文件传输
+	maxMsgSize := 100 * 1024 * 1024
 	conn, err := grpc.NewClient(
-		cfg.AI.GRPCHost, // 或 "localhost:50051"
+		cfg.AI.GRPCHost,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		// 添加这两个选项
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(maxMsgSize),
 			grpc.MaxCallSendMsgSize(maxMsgSize),
 		),
 	)
 	if err != nil {
-		log.Fatalf("无法连接 AI Service: %v", err)
+		log.Fatalf("❌ 无法连接 AI Service: %v", err)
 	}
 	defer conn.Close()
-	log.Println("✅ [2/7] gRPC 连接成功")
 
-	log.Println("🔍 [3/7] 正在初始化基础设施 (MinIO/Redis/Qdrant)...")
-	dataClient := data.NewData()
-	log.Println("✅ [4/7] 基础设施初始化完毕")
+	// 3. 初始化数据层 (Postgres, Qdrant, Redis, MinIO)
+	// 注意：这里传入 cfg 是为了让 data 层读取数据库配置
+	d, cleanup, err := data.NewData(cfg)
+	if err != nil {
+		log.Fatalf("❌ 数据层初始化失败: %v", err)
+	}
+	defer cleanup()
 
+	// 4. 初始化服务层与 Worker
 	grpcClient := pb.NewLLMServiceClient(conn)
-	ragService := service.NewRagService(grpcClient, dataClient)
+	ragService := service.NewRagService(grpcClient, d)
+	etlWorker := worker.NewETLWorker(d, grpcClient)
+
+	// 启动后台 ETL Worker (处理文件解析任务)
+	go etlWorker.Start(context.Background(), 3)
+	log.Println("✅ 后台 ETL Worker 已启动 (并发数: 3)")
+
+	// 5. 初始化 Handler (控制器)
+	authHandler := handler.NewAuthHandler(d.DB) // 🆕 注入 Postgres DB
 	chatHandler := handler.NewChatHandler(ragService)
 
-	log.Println("🔍 [5/7] 正在启动后台 Worker...")
-	etlWorker := worker.NewETLWorker(dataClient, grpcClient)
-
-	// ⚠️ 重点检查这里有没有 'go'
-	go etlWorker.Start(context.Background(), 3)
-	log.Println("✅ [6/7] 后台 Worker 已异步启动")
-
+	// 6. 初始化 Gin Web Server
 	r := gin.Default()
-	// ... (CORS配置省略) ...
-	r.Use(func(c *gin.Context) {
-		c.Next()
-	})
 
-	v1 := r.Group("/api/v1")
+	// 🔥 关键：配置 CORS 跨域
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // 开发环境允许所有，生产环境建议指定前端域名
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
+
+	// 7. 注册路由
+	api := r.Group("/api/v1")
 	{
-		v1.POST("/chat/stream", chatHandler.HandleChatSSE)
-		v1.POST("/upload", chatHandler.HandleUpload)
+		// 🆕 用户认证模块
+		auth := api.Group("/auth")
+		{
+			auth.POST("/register", authHandler.HandleRegister)
+			auth.POST("/login", authHandler.HandleLogin)
+		}
+
+		// 业务功能模块
+		// 未来可以在这里加中间件: api.Use(middleware.JWTAuth())
+		api.POST("/upload", chatHandler.HandleUpload)
+		api.POST("/chat/stream", chatHandler.HandleChatSSE)
 	}
 
-	log.Println("🚀 [7/7] 准备监听 8080 端口...")
+	log.Println("🚀 Chimera-RAG 后端已启动，监听端口 :8080")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("❌ Server 启动失败: %v", err)
 	}
