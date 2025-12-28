@@ -2,12 +2,13 @@ import logging
 import io
 from pathlib import Path
 
-# Docling 核心
+# Docling 核心组件
 from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.datamodel.base_models import InputFormat, DocumentStream
-from docling.datamodel.pipeline_options import PdfPipelineOptions, TableStructureOptions
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.document import DocumentStream
 
-# 🔥 新增：Docling 原生切分器
+# 🔥 关键：HybridChunker 在 docling.chunking 下
 from docling.chunking import HybridChunker
 
 class PDFParser:
@@ -18,7 +19,7 @@ class PDFParser:
     def _get_components(cls):
         """单例模式初始化 Converter 和 Chunker"""
         if cls._converter is None:
-            logging.info("🐢 [Init] 正在初始化 Docling 模型...")
+            logging.info("🐢 [Init] 正在初始化 Docling 模型 (HybridChunker enabled)...")
 
             # 1. 配置转换器
             pipeline_options = PdfPipelineOptions()
@@ -32,11 +33,11 @@ class PDFParser:
             )
 
             # 2. 配置切分器 (HybridChunker)
-            # 它可以智能地结合“语义结构”和“Token限制”来切分
+            # 使用 sentence-transformers 的 tokenizer 来计算 token 数，确保切片不会超长
             cls._chunker = HybridChunker(
-                tokenizer="sentence-transformers/all-MiniLM-L6-v2", # 用和 Embedding 一样的 tokenizer 估算长度
-                max_tokens=500, # 每个块的最大 Token 数
-                merge_peers=True, # 合并同级标题下的内容
+                tokenizer="sentence-transformers/all-MiniLM-L6-v2",
+                max_tokens=500, # 适合 embedding 模型的窗口大小
+                merge_peers=True,
             )
 
             logging.info("✅ [Init] Docling 组件就绪")
@@ -46,53 +47,51 @@ class PDFParser:
     def parse_and_chunk(file_source, filename="temp.pdf"):
         """
         解析 PDF 并返回带有【真实页码】的语义切片
+        :param file_source: 可以是 str (路径), Path (路径), 或 bytes (二进制)
         """
         converter, chunker = PDFParser._get_components()
         logging.info(f"📄 [Docling] 开始解析: {filename}")
 
         try:
-            # 1. 构建输入源
+            # 1. 智能构建输入源
             input_doc = None
+
             if isinstance(file_source, bytes):
+                # Case A: 传入二进制流 (内存处理)
+                logging.info(f"   ⚙️ Mode: Bytes Stream ({len(file_source)} bytes)")
                 input_doc = DocumentStream(name=filename, stream=io.BytesIO(file_source))
-            else:
+            elif isinstance(file_source, (str, Path)):
+                # Case B: 传入文件路径 (推荐，性能更好且稳定)
+                logging.info(f"   ⚙️ Mode: File Path ({file_source})")
                 input_doc = Path(file_source)
+            else:
+                raise ValueError(f"不支持的输入类型: {type(file_source)}")
 
             # 2. 执行转换 (PDF -> DL Document)
-            # 这一步比较耗时 (CPU/MPS)
             conv_result = converter.convert(input_doc)
             doc = conv_result.document
-            logging.info(f"✅ [Docling] 转换完成，开始提取切片...")
+            logging.info(f"✅ [Docling] 转换完成，开始 HybridChunker 切分...")
 
-            # 3. 使用 HybridChunker 切分 (提取真实页码的核心步骤)
-            # chunker.chunk(doc) 返回的是 Docling 的 Chunk 对象迭代器
+            # 3. 使用 HybridChunker 切分
             chunk_iter = chunker.chunk(doc)
 
             final_chunks = []
             for i, chunk in enumerate(chunk_iter):
-                # chunk.text: 包含了标题上下文的文本 (例如: "Header1 > Header2 \n 正文...")
-                # chunk.meta: 包含了元数据
-
-                # 🔥 提取页码
-                # Docling 的 chunk 可能跨页，我们取这个 chunk 出现的“第一页”作为跳转目标
+                # 🔥 提取页码 (追溯 Provenance)
                 page_num = 1
                 if chunk.meta.doc_items:
-                    # 追溯这个 chunk 来源于文档的哪个部分 (Provenance)
                     first_item = chunk.meta.doc_items[0]
                     if hasattr(first_item, 'prov') and first_item.prov:
                         page_num = first_item.prov[0].page_no
 
                 # 序列化结果
+                # chunk.text 已经包含了上下文（如标题）
                 final_chunks.append({
-                    "content": chunk.text, # HybridChunker 自动帮你拼好了上下文，不需要手动 join 标题了
-                    "page": page_num       # ✅ 真实的页码！
+                    "content": chunk.text,
+                    "page": page_num
                 })
 
             logging.info(f"✂️ [HybridChunker] 生成了 {len(final_chunks)} 个带有页码的片段")
-
-            # 打印前3个看看效果
-            for idx, c in enumerate(final_chunks[:3]):
-                logging.info(f"   🔹 P{c['page']}: {c['content'][:50]}...")
 
             return final_chunks
 

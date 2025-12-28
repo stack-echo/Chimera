@@ -1,102 +1,101 @@
 <template>
   <div class="login-container">
-    <div class="login-box">
-      <h2 class="title">🦄 Chimera-RAG</h2>
-      <a-tabs default-active-key="1">
-        <a-tab-pane key="1" title="登录">
-          <a-form :model="loginForm" @submit="handleLogin">
-            <a-form-item field="username" label="用户名">
-              <a-input v-model="loginForm.username" placeholder="请输入用户名" />
-            </a-form-item>
-            <a-form-item field="password" label="密码">
-              <a-input-password v-model="loginForm.password" placeholder="请输入密码" />
-            </a-form-item>
-            <a-button type="primary" html-type="submit" long :loading="loading">立即登录</a-button>
-          </a-form>
-        </a-tab-pane>
+    <div class="login-card">
+      <h2>Chimera RAG</h2>
+      <p class="subtitle">企业级多租户知识库系统 v0.4.0</p>
 
-        <a-tab-pane key="2" title="注册">
-          <a-form :model="regForm" @submit="handleRegister">
-            <a-form-item field="username" label="用户名">
-              <a-input v-model="regForm.username" />
-            </a-form-item>
-            <a-form-item field="email" label="邮箱">
-              <a-input v-model="regForm.email" />
-            </a-form-item>
-            <a-form-item field="password" label="密码">
-              <a-input-password v-model="regForm.password" />
-            </a-form-item>
-            <a-button type="outline" html-type="submit" long :loading="loading">注册账号</a-button>
-          </a-form>
-        </a-tab-pane>
-      </a-tabs>
+      <div class="form-item">
+        <label>账号</label>
+        <input v-model="form.username" placeholder="admin / user" />
+      </div>
+
+      <div class="form-item">
+        <label>密码</label>
+        <input v-model="form.password" type="password" />
+      </div>
+
+      <div class="role-selector">
+        <label>登录身份：</label>
+        <div class="radio-group">
+          <label>
+            <input type="radio" v-model="form.role" value="user" />
+            普通用户 (对话)
+          </label>
+          <label>
+            <input type="radio" v-model="form.role" value="admin" />
+            组织管理员 (管理)
+          </label>
+        </div>
+      </div>
+
+      <button @click="handleLogin" :disabled="loading">
+        {{ loading ? '登录中...' : '登 录' }}
+      </button>
+      <div style="margin-top: 15px; text-align: center; font-size: 14px;">
+        还没有账号？ <router-link to="/register" style="color: #42b983;">立即注册</router-link>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { reactive, ref } from 'vue'
-import request from '../api/request' // 导入我们封装的 axios
-import { useUserStore } from '../store/user'
 import { useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
+import { useUserStore } from '../store/user'
+// import request from '../api/request'
 
-const userStore = useUserStore()
 const router = useRouter()
+const userStore = useUserStore()
 const loading = ref(false)
 
-// 表单数据
-const loginForm = reactive({ username: '', password: '' })
-const regForm = reactive({ username: '', password: '', email: '' })
+const form = reactive({
+  username: 'admin',
+  password: '123',
+  role: 'user' // 默认为普通用户
+})
 
-// 登录逻辑
 const handleLogin = async () => {
   loading.value = true
-  try {
-    const res = await request.post('/auth/login', loginForm)
-    // res 已经是 response.data 了 (因为拦截器处理过)
-    userStore.setLoginState(res.token, { username: res.username, id: res.user_id })
-    Message.success('登录成功')
-    router.push('/') // 跳转首页
-  } catch (e) {
-    // 错误在拦截器里处理了，这里不需要写 Message
-  } finally {
-    loading.value = false
-  }
-}
 
-// 注册逻辑
-const handleRegister = async () => {
-  loading.value = true
-  try {
-    await request.post('/auth/register', regForm)
-    Message.success('注册成功，请登录')
-  } catch (e) {
-    // error handled
-  } finally {
+  // 模拟 API 请求延时
+  setTimeout(() => {
+    // 假设这是后端返回的数据
+    const mockResponse = {
+      token: 'mock-jwt-token-xyz',
+      user: {
+        id: 1,
+        name: form.username,
+        role: form.role // 后端告诉我们这个用户是什么角色
+      }
+    }
+
+    // 1. 调用 Store 更新状态
+    userStore.login(mockResponse.token, mockResponse.user)
+
+    // 2. 根据角色路由分流
+    if (form.role === 'admin') {
+      alert('欢迎管理员！即将进入控制台...')
+      router.push('/admin')
+    } else {
+      alert('欢迎回来！即将进入对话工作台...')
+      router.push('/chat') // 也就是之前的 Home.vue
+    }
+
     loading.value = false
-  }
+  }, 800)
 }
 </script>
 
 <style scoped>
-.login-container {
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-.login-box {
-  width: 400px;
-  padding: 40px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-}
-.title {
-  text-align: center;
-  margin-bottom: 30px;
-  color: #333;
-}
+.login-container { display: flex; justify-content: center; align-items: center; height: 100vh; background: #2c3e50; }
+.login-card { width: 350px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+h2 { text-align: center; margin-bottom: 5px; color: #333; }
+.subtitle { text-align: center; color: #666; font-size: 0.9em; margin-bottom: 20px; }
+.form-item { margin-bottom: 15px; }
+.form-item label { display: block; margin-bottom: 5px; font-weight: bold; }
+input[type="text"], input[type="password"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+.role-selector { margin-bottom: 20px; background: #f8f9fa; padding: 10px; border-radius: 4px; }
+.radio-group { display: flex; gap: 15px; margin-top: 5px; }
+button { width: 100%; padding: 12px; background: #42b983; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+button:hover { background: #3aa876; }
 </style>

@@ -1,16 +1,20 @@
 package data
 
 import (
-	"Chimera-RAG/backend-go/internal/conf"
 	"context"
 	"fmt"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"log"
+	"net"
+	"strconv"
+
+	"Chimera-RAG/backend-go/internal/conf"
+	"Chimera-RAG/backend-go/internal/model"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	// Qdrant 官方 Go SDK
 	"github.com/qdrant/go-client/qdrant"
@@ -31,53 +35,72 @@ type SearchResult struct {
 }
 
 func NewData(cfg *conf.Config) (*Data, func(), error) {
+	// -------------------------------------------------------
 	// 1. 初始化 Redis
+	// -------------------------------------------------------
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr:     cfg.Data.RedisAddr,     // 从配置读取 "localhost:6379"
+		Password: cfg.Data.RedisPassword, // 🔥 从配置读取 "chimera_secret"
 	})
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
-		log.Fatalf("Redis 连接失败: %v", err)
+		log.Fatalf("❌ Redis 连接失败: %v", err)
 	}
+	log.Println("✅ Redis 连接成功")
 
+	// -------------------------------------------------------
 	// 2. 初始化 MinIO
-	minioClient, err := minio.New("localhost:9000", &minio.Options{
-		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
+	// -------------------------------------------------------
+	minioClient, err := minio.New(cfg.Data.MinioEndpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.Data.MinioAccessKey, cfg.Data.MinioSecretKey, ""),
 		Secure: false,
 	})
 	if err != nil {
-		log.Fatalf("MinIO 初始化失败: %v", err)
+		log.Fatalf("❌ MinIO 初始化失败: %v", err)
 	}
 
 	// 自动创建 MinIO Bucket
-	bucketName := "chimera-docs"
+	bucketName := cfg.Data.MinioBucket // 从配置读取 "chimera-docs"
+	if bucketName == "" {
+		bucketName = "chimera-docs" // 兜底
+	}
+
 	exists, err := minioClient.BucketExists(context.Background(), bucketName)
 	if err != nil {
-		log.Fatalf("检查 MinIO Bucket 失败: %v", err)
+		log.Fatalf("❌ 检查 MinIO Bucket 失败: %v", err)
 	}
 	if !exists {
 		err = minioClient.MakeBucket(context.Background(), bucketName, minio.MakeBucketOptions{})
 		if err != nil {
-			log.Fatalf("创建 MinIO Bucket 失败: %v", err)
+			log.Fatalf("❌ 创建 MinIO Bucket 失败: %v", err)
 		}
 		log.Printf("🎉 MinIO Bucket '%s' 创建成功", bucketName)
+	} else {
+		log.Printf("✅ MinIO 连接成功 (Bucket '%s' 已存在)", bucketName)
 	}
 
+	// -------------------------------------------------------
 	// 3. 初始化 Qdrant
+	// -------------------------------------------------------
+	// 解析 Qdrant 地址 (cfg 中是 "localhost:6334")
+	qdrantHost, qdrantPort := parseHostPort(cfg.Data.QdrantAddr, "localhost", 6334)
+
 	qdrantClient, err := qdrant.NewClient(&qdrant.Config{
-		Host: "localhost",
-		Port: 6334,
+		Host: qdrantHost,
+		Port: qdrantPort,
 	})
 	if err != nil {
-		log.Fatalf("无法初始化 Qdrant 客户端: %v", err)
+		log.Fatalf("❌ 无法初始化 Qdrant 客户端: %v", err)
 	}
 
-	// ⚠️ 移除了 Health() 调用，直接通过创建 Collection 来验证连接
-	// 这样兼容性最好，不会因为 SDK 版本变动报错
+	// 验证连接并创建集合
 	createCollection(qdrantClient)
 
+	// -------------------------------------------------------
+	// 4. 初始化 Postgres
+	// -------------------------------------------------------
 	pgDB, err := NewPostgresDB(cfg)
 	if err != nil {
-		log.Fatalf("无法初始化 Postgres 客户端: %v", err)
+		log.Fatalf("❌ 无法初始化 Postgres 客户端: %v", err)
 	}
 
 	d := &Data{
@@ -90,18 +113,27 @@ func NewData(cfg *conf.Config) (*Data, func(), error) {
 	// 构造清理函数
 	cleanup := func() {
 		log.Println("正在关闭数据层资源...")
-
-		// 关闭 Postgres 连接
 		if sqlDB, err := d.DB.DB(); err == nil {
 			sqlDB.Close()
 		}
-
-		// 如果有 Redis 或 Qdrant 的 Close 方法，也在这里调用
 		d.Redis.Close()
 		d.Qdrant.Close()
 	}
 
 	return d, cleanup, nil
+}
+
+// 辅助函数: 解析 "host:port" 字符串
+func parseHostPort(addr string, defaultHost string, defaultPort int) (string, int) {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return defaultHost, defaultPort
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return host, defaultPort
+	}
+	return host, port
 }
 
 // 辅助函数：确保 Collection 存在
@@ -111,8 +143,8 @@ func createCollection(client *qdrant.Client) {
 	// 尝试列出集合，这本身就是一种连接测试
 	collections, err := client.ListCollections(ctx)
 	if err != nil {
-		// 如果这里报错，说明 Qdrant 没连上
 		log.Printf("⚠️ 无法连接 Qdrant (ListCollections 失败): %v", err)
+		// 这里不 Fatal，防止向量库挂了影响主程序启动，但生产环境建议处理
 		return
 	}
 
@@ -129,31 +161,29 @@ func createCollection(client *qdrant.Client) {
 		err := client.CreateCollection(ctx, &qdrant.CreateCollection{
 			CollectionName: "chimera_docs",
 			VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-				Size:     384, // ⚠️ 配合 Mock 数据，未来需改为 768
+				Size:     384, // ⚠️ 注意: 这里的维度必须和 Python embedding 模型一致 (all-MiniLM-L6-v2 是 384)
 				Distance: qdrant.Distance_Cosine,
 			}),
 		})
 
 		if err != nil {
-			log.Printf("创建 Collection 失败: %v", err)
+			log.Printf("❌ 创建 Collection 失败: %v", err)
 		} else {
 			log.Println("🎉 Qdrant Collection 'chimera_docs' 创建成功")
 		}
 	} else {
-		log.Println("🎉 Qdrant 连接成功 (Collection 'chimera_docs' 已存在)")
+		log.Println("✅ Qdrant 连接成功 (Collection 'chimera_docs' 已存在)")
 	}
 }
 
-// SearchSimilar 核心检索功能 (使用最新的 Query API)
+// SearchSimilar 核心检索功能
 func (d *Data) SearchSimilar(ctx context.Context, vector []float32, topK uint64) ([]SearchResult, error) {
-	// 将 vector 转为 SDK 需要的格式
 	queryVal := make([]float32, len(vector))
 	copy(queryVal, vector)
 
-	// 使用 Query 接口 (这是 Qdrant 的新标准)
 	points, err := d.Qdrant.Query(ctx, &qdrant.QueryPoints{
 		CollectionName: "chimera_docs",
-		Query:          qdrant.NewQuery(queryVal...), // 使用 NewQuery 包装向量
+		Query:          qdrant.NewQuery(queryVal...),
 		Limit:          &topK,
 		WithPayload: &qdrant.WithPayloadSelector{
 			SelectorOptions: &qdrant.WithPayloadSelector_Enable{
@@ -184,33 +214,29 @@ func (d *Data) SearchSimilar(ctx context.Context, vector []float32, topK uint64)
 
 // NewPostgresDB 初始化 PG 连接
 func NewPostgresDB(cfg *conf.Config) (*gorm.DB, error) {
-	// 这里的配置需要在 config.yaml 里加，暂时先写死测试，或者你马上去改 config
-	// dsn := "host=localhost user=chimera_user password=chimera_password dbname=chimera_db port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	// 🔥 核心修改：不再使用硬编码，而是使用 cfg 中的配置
+	// 这里的 cfg.Data.DatabaseSource 已经在 config.go 中设置了默认值:
+	// "postgres://chimera_user:chimera_secret@localhost:5432/chimera_main?sslmode=disable"
+	dsn := cfg.Data.DatabaseSource
 
-	// 建议从 cfg 读取:
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		"localhost", // 如果是 Docker 内部互联用 "postgres"，本地运行用 "localhost"
-		"reg_user",
-		"reg_password",
-		"reg_db",
-		"5432",
-	)
+	log.Printf("正在连接数据库...") // 不要打印 DSN，防止密码泄露
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 
-	// 🔥 核心：自动迁移模式，自动创建表结构
+	// 🔥 核心：自动迁移模式，自动创建表结构 (v0.4.0 Schema)
 	if err := db.AutoMigrate(
-		&User{},
-		&Organization{},
-		&KnowledgeBase{},
-		&Document{},
+		&model.User{},
+		&model.Organization{},
+		&model.OrganizationMember{},
+		&model.KnowledgeBase{},
+		&model.Document{},
 	); err != nil {
 		return nil, fmt.Errorf("database migration failed: %v", err)
 	}
 
-	log.Println("✅ PostgreSQL connected & Schema migrated!")
+	log.Println("✅ PostgreSQL 连接成功 & 表结构已迁移!")
 	return db, nil
 }

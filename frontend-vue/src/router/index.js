@@ -1,24 +1,37 @@
-// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '../store/user'
-import Login from '../views/Login.vue' // 稍后创建
-import Home from '../views/Home.vue'   // 把原来的 App.vue 内容移到这里
+import Login from '../views/Login.vue'
+import ChatHome from '../views/Home.vue' // 原来的 Home 改名为 ChatHome
+import AdminDashboard from '../views/AdminDashboard.vue' // 新建管理员页面
+import Register from '../views/Register.vue'
 
 const routes = [
-    { path: '/login', component: Login, meta: { requiresAuth: false } },
-    { path: '/', component: Home, meta: { requiresAuth: true } },
+    { path: '/login', component: Login },
+    { path: '/register', component: Register },
+    {
+        path: '/',
+        redirect: '/chat' // 默认跳对话
+    },
+    {
+        path: '/chat',
+        component: ChatHome,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/admin',
+        component: AdminDashboard,
+        meta: { requiresAuth: true, requiresAdmin: true } // 标记需要管理员权限
+    }
 ]
 
 const router = createRouter({
     history: createWebHistory(),
-    routes,
+    routes
 })
 
-// 🔒 全局路由守卫
+// 简单的路由守卫
 router.beforeEach((to, from, next) => {
-    const userStore = useUserStore()
-    // 如果页面需要登录，且用户没有 token
-    if (to.meta.requiresAuth && !userStore.token) {
+    const token = localStorage.getItem('token')
+    if (to.meta.requiresAuth && !token) {
         next('/login')
     } else {
         next()

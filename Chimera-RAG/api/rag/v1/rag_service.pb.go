@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.20.3
-// source: rag_service.proto
+// source: rag.proto
 
 package v1
 

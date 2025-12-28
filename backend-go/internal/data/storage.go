@@ -1,6 +1,7 @@
 package data
 
 import (
+	"Chimera-RAG/backend-go/internal/model"
 	"context"
 	"fmt"
 	"io"
@@ -65,6 +66,6 @@ func (d *Data) GetFileStream(ctx context.Context, bucketName string, objectName 
 // ---------------------------------------------------------
 
 // CreateDocument 在数据库创建文档记录
-func (d *Data) CreateDocument(ctx context.Context, doc *Document) error {
+func (d *Data) CreateDocument(ctx context.Context, doc *model.Document) error {
 	return d.DB.WithContext(ctx).Create(doc).Error
 }

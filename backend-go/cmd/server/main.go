@@ -2,7 +2,7 @@ package main
 
 import (
 	"Chimera-RAG/backend-go/internal/middleware"
-	"context"
+	"Chimera-RAG/backend-go/internal/repository"
 	"log"
 
 	"github.com/gin-contrib/cors" // 需执行 go get github.com/gin-contrib/cors
@@ -15,7 +15,6 @@ import (
 	"Chimera-RAG/backend-go/internal/data"
 	"Chimera-RAG/backend-go/internal/handler"
 	"Chimera-RAG/backend-go/internal/service"
-	"Chimera-RAG/backend-go/internal/worker"
 )
 
 func main() {
@@ -45,18 +44,21 @@ func main() {
 		log.Fatalf("❌ 数据层初始化失败: %v", err)
 	}
 	defer cleanup()
+	userRepo := repository.NewUserRepository(d.DB)
 
 	// 4. 初始化服务层与 Worker
-	grpcClient := pb.NewLLMServiceClient(conn)
+	grpcClient := pb.NewRagServiceClient(conn)
 	ragService := service.NewRagService(grpcClient, d)
-	etlWorker := worker.NewETLWorker(d, grpcClient)
-
-	// 启动后台 ETL Worker (处理文件解析任务)
-	go etlWorker.Start(context.Background(), 3)
-	log.Println("✅ 后台 ETL Worker 已启动 (并发数: 3)")
+	orgService := service.NewOrgService(d)
+	kbService := service.NewKBService(d)
+	fileService := service.NewFileService(d)
+	authService := service.NewAuthService(userRepo)
 
 	// 5. 初始化 Handler (控制器)
-	authHandler := handler.NewAuthHandler(d.DB) // 🆕 注入 Postgres DB
+	orgHandler := handler.NewOrgHandler(orgService)
+	kbHandler := handler.NewKBHandler(kbService)
+	fileHandler := handler.NewFileHandler(fileService)
+	authHandler := handler.NewAuthHandler(authService)
 	chatHandler := handler.NewChatHandler(ragService)
 
 	// 6. 初始化 Gin Web Server
@@ -74,21 +76,27 @@ func main() {
 	// 7. 注册路由
 	api := r.Group("/api/v1")
 	{
-		// 🆕 用户认证模块
+		// 用户认证模块
 		auth := api.Group("/auth")
 		{
-			auth.POST("/register", authHandler.HandleRegister)
-			auth.POST("/login", authHandler.HandleLogin)
+			auth.POST("/register", authHandler.Register)
+			auth.POST("/login", authHandler.Login)
 		}
-
 		// 受保护的路由 (Protected Routes)
 		// 使用 Use 加载中间件
 		protected := api.Group("/")
 		protected.Use(middleware.JWTAuth())
 		{
-			// 只有登录用户才能访问下面这些
-			protected.POST("/upload", chatHandler.HandleUpload)
-			protected.POST("/chat/stream", chatHandler.HandleChatSSE) // 聊天也建议保护起来
+			// 文件上传
+			protected.POST("/files/upload", fileHandler.Upload)
+			// 聊天
+			protected.POST("/chat/stream", chatHandler.HandleChatSSE)
+			// 组织
+			protected.POST("/orgs", orgHandler.Create)
+			protected.GET("/orgs", orgHandler.List)
+			// 知识库路由
+			protected.POST("/kbs", kbHandler.Create)
+			protected.GET("/kbs", kbHandler.List)
 		}
 		protected.GET("/file/:filename", chatHandler.HandleGetFile)
 	}

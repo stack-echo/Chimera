@@ -1,13 +1,12 @@
 package handler
 
 import (
-	"Chimera-RAG/backend-go/internal/biz"
+	"Chimera-RAG/backend-go/internal/dto"
 	"Chimera-RAG/backend-go/internal/service"
 	"fmt"
 	"io"
 	"net/http"
-
-	pb "Chimera-RAG/backend-go/api/rag/v1"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,41 +19,74 @@ func NewChatHandler(svc *service.RagService) *ChatHandler {
 	return &ChatHandler{svc: svc}
 }
 
-// HandleChatSSE 处理流式对话
+// HandleChatSSE 处理对话接口 (兼容流式与非流式)
 // POST /api/v1/chat/stream
 func (h *ChatHandler) HandleChatSSE(c *gin.Context) {
-	// 1. 解析请求 JSON
-	var jsonReq biz.ChatRequest
-	if err := c.ShouldBindJSON(&jsonReq); err != nil {
+	var req dto.ChatReq
+
+	// 1. 绑定前端 JSON
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 2. 构造 gRPC 请求对象
-	grpcReq := &pb.AskRequest{
-		Query:     jsonReq.Query,
-		SessionId: jsonReq.SessionID,
-		UseGraph:  jsonReq.UseGraph,
-	}
-
-	// 3. 获取流数据管道
-	// 注意：这里传入 c.Request.Context()，如果前端断开连接，gRPC 也会感知并取消
-	respChan, err := h.svc.StreamChat(c.Request.Context(), grpcReq)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to call AI service"})
+	// 2. 获取用户id
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
 		return
 	}
 
-	// 4. 开启 SSE 流式响应
-	c.Stream(func(w io.Writer) bool {
-		// 从管道读取数据
-		if msg, ok := <-respChan; ok {
-			// SSE 格式: data: <内容>\n\n
-			// Gin 的 c.SSEvent 会自动封装格式
-			c.SSEvent("message", msg)
-			return true // 继续保持连接
+	// 3. 创建通道用于接收 Service 的流式返回
+	// (放在这里是因为不管流不流，Service 都需要这个通道)
+	respChan := make(chan string)
+
+	// 4. 异步调用 Service (生产数据)
+	// 注意：请确保 h.svc.StreamChat 内部在发完消息后会 close(respChan)，否则下面会死锁
+	// 传入 userID.(uint)
+	go h.svc.StreamChat(c.Request.Context(), userID.(uint), req, respChan)
+
+	// ==========================================
+	// 分支 A: 非流式模式 (For Apifox 测试 / 第三方调用)
+	// ==========================================
+	if !req.Stream {
+		var fullAnswer string
+		// 循环读取通道，直到 Service 关闭通道
+		for msg := range respChan {
+			fullAnswer += msg
 		}
-		return false // 管道关闭，断开连接
+		
+		if strings.Contains(fullAnswer, "ERR: ⛔️") {
+			// 如果检测到这个特定的错误标记，返回 403 Forbidden
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "Access Denied: You do not have permission to access this Knowledge Base.",
+				"details": fullAnswer,
+			})
+			return
+		}
+
+		// 拼接完成后，一次性返回 JSON
+		c.JSON(http.StatusOK, gin.H{
+			"answer":  fullAnswer,
+			"sources": []string{}, // 如果你的 channel 还没传 sources，暂时留空
+		})
+		return
+	}
+
+	// ==========================================
+	// 分支 B: 流式模式 (SSE, For Vue 前端)
+	// ==========================================
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("Transfer-Encoding", "chunked")
+
+	c.Stream(func(w io.Writer) bool {
+		if msg, ok := <-respChan; ok {
+			c.SSEvent("message", msg)
+			return true
+		}
+		return false
 	})
 }
 

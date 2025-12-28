@@ -2,108 +2,117 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"github.com/minio/minio-go/v7"
 	"io"
+	"log"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
 
 	pb "Chimera-RAG/backend-go/api/rag/v1"
 	"Chimera-RAG/backend-go/internal/data"
+	"Chimera-RAG/backend-go/internal/dto"
+	"Chimera-RAG/backend-go/internal/model"
 )
 
 // RagService 定义业务逻辑
 type RagService struct {
-	grpcClient pb.LLMServiceClient
+	grpcClient pb.RagServiceClient
 	Data       *data.Data
 }
 
 // NewRagService 构造函数
-func NewRagService(client pb.LLMServiceClient, data *data.Data) *RagService {
+func NewRagService(client pb.RagServiceClient, data *data.Data) *RagService {
 	return &RagService{
 		grpcClient: client,
 		Data:       data,
 	}
 }
 
-// StreamChat RAG 核心流程
-func (s *RagService) StreamChat(ctx context.Context, req *pb.AskRequest) (<-chan string, error) {
-	respChan := make(chan string, 10)
+// StreamChat 处理聊天请求 (v0.4.0 瘦身版)
+// Go 只需要做一个“传话筒”，把 HTTP 请求参数转发给 gRPC
+func (s *RagService) StreamChat(ctx context.Context, userID uint, req dto.ChatReq, respChan chan<- string) {
+	defer close(respChan)
+	// =================================================================
+	// 🛡️ 步骤 0: 安全安检 (Security Check)
+	// 在调用 Python 之前，先检查这个用户有没有资格访问这个 KB
+	// =================================================================
 
-	go func() {
-		defer close(respChan)
-
-		// 1. 向量化
-		respChan <- "THINKing: 正在理解意图..."
-		embResp, err := s.grpcClient.EmbedData(ctx, &pb.EmbedRequest{Data: &pb.EmbedRequest_Text{Text: req.Query}})
-		if err != nil {
-			respChan <- "ERR: " + err.Error()
+	// 如果指定了知识库 ID (如果 KbID 为 0，可能是纯闲聊，跳过校验)
+	if req.KbID > 0 {
+		var kb model.KnowledgeBase
+		// 1. 查询知识库是否存在
+		// 假设 s.Data.DB 是你的 GORM 实例
+		if err := s.Data.DB.First(&kb, req.KbID).Error; err != nil {
+			log.Printf("⚠️ 知识库不存在: %v", req.KbID)
+			respChan <- "ERR: 知识库不存在或已被删除"
 			return
 		}
 
-		// 2. 检索 (Retrieval)
-		respChan <- "THINKing: 正在检索知识库..."
-		docs, err := s.Data.SearchSimilar(ctx, embResp.Vector, 15)
-		if err != nil {
-			respChan <- "ERR: " + err.Error()
-			return
-		}
+		// 2. 权限判断
+		if kb.OrgID != nil {
+			// [组织知识库逻辑]
+			var count int64
+			// 注意：这里查询条件里要用 *kb.OrgID 取出实际的值
+			s.Data.DB.Model(&model.OrganizationMember{}).
+				Where("user_id = ? AND organization_id = ?", userID, *kb.OrgID). // 👈 加了 * 号
+				Count(&count)
 
-		// 3. 组装 Prompt (Augmentation)
-		contextText := ""
-		if len(docs) > 0 {
-			respChan <- fmt.Sprintf("THINKing: 检索到 %d 个相关片段，正在阅读...", len(docs))
-
-			for _, doc := range docs {
-				// 🔥 核心修改点：格式化上下文，显式包含【文件名】和【页码】
-				// 这样 Python 端的 System Prompt 才能识别并引用
-				// 假设 doc 结构体里有 FileName 字段 (如果没有，请去 Qdrant 检索逻辑里补上)
-				contextText += fmt.Sprintf("【来源: %s | 页码: %d】\n%s\n\n", doc.FileName, doc.Page, doc.Content)
-			}
-		} else {
-			respChan <- "THINKing: 未找到相关文档，将依靠通用知识回答..."
-		}
-
-		// 构造最终 Prompt
-		// 建议加上 explicit instruction (显式指令) 强化 AI 的引用意图
-		finalPrompt := fmt.Sprintf(`
-			背景知识：
-			%s
-			
-			用户问题：%s
-			请根据背景知识回答，并在引用处使用 <<文件名|页码>> 格式标注。
-			`, contextText, req.Query)
-
-		// 4. 生成 (Generation) - 调用 Python 的 AskStream
-		respChan <- "THINKing: 正在生成回答..."
-		stream, err := s.grpcClient.AskStream(ctx, &pb.AskRequest{Query: finalPrompt})
-		if err != nil {
-			respChan <- "ERR: LLM 连接失败 - " + err.Error()
-			return
-		}
-
-		for {
-			resp, err := stream.Recv()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				respChan <- "ERR: " + err.Error()
+			if count == 0 {
+				// 为了日志好看，这里也用 *kb.OrgID
+				log.Printf("🚨 越权警告: 用户 %d -> 组织 %d", userID, *kb.OrgID)
+				respChan <- "ERR: ⛔️ 无权访问：你不是该组织的成员"
 				return
 			}
-			// 将 AI 的回答推给前端
-			if resp.AnswerDelta != "" {
-				respChan <- "ANSWER: " + resp.AnswerDelta
-			}
+		} else {
+			// [个人知识库逻辑] (OrgID == nil)
+			// 如果你的逻辑是“如果不属于组织，必须是自己的”，可以在这里校验
+			// if kb.UserID != userID { ... }
 		}
-	}()
+	}
 
-	return respChan, nil
+	// =================================================================
+	// ✅ 步骤 1: 构造 gRPC 请求 (安检通过，放行)
+	// =================================================================
+	// 1. 构造 gRPC 请求
+	// 这里不再调用 EmbedData，而是直接把 KbID/OrgID 传给 Python
+	grpcReq := &pb.ChatRequest{
+		Query:     req.Query,
+		SessionId: req.SessionID,    // 如果有的话
+		KbId:      int64(req.KbID),  // 🔥 核心：传过去让 Python 知道查哪个库
+		OrgId:     int64(req.OrgID), // 🔥 核心：传过去让 Python 知道查哪个组织
+		// History: ... (如果做了历史记录转换，在这里赋值)
+	}
+
+	// 2. 调用 Python 的 ChatStream
+	// 这一步之后，Python 会自动完成 Embedding -> Search -> LLM
+	stream, err := s.grpcClient.ChatStream(ctx, grpcReq)
+	if err != nil {
+		log.Printf("❌ gRPC 调用失败: %v", err)
+		respChan <- "ERR: 服务端连接失败"
+		return
+	}
+
+	// 3. 转发流式响应
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			// 流结束
+			break
+		}
+		if err != nil {
+			log.Printf("❌ gRPC 流读取错误: %v", err)
+			respChan <- "ERR: 生成中断"
+			return
+		}
+
+		// 将 Python 返回的文本片段发送给 HTTP 前端
+		respChan <- resp.AnswerDelta
+	}
 }
 
 // UploadDocument 处理文件上传全流程
-func (s *RagService) UploadDocument(ctx context.Context, fileHeader *multipart.FileHeader, userID uint) (*data.Document, error) {
+func (s *RagService) UploadDocument(ctx context.Context, fileHeader *multipart.FileHeader, userID uint) (*model.Document, error) {
 	// 1. 打开文件流
 	src, err := fileHeader.Open()
 	if err != nil {
@@ -119,7 +128,7 @@ func (s *RagService) UploadDocument(ctx context.Context, fileHeader *multipart.F
 	}
 
 	// 3. [Data层] 写入数据库 (v0.2.0 文件确权)
-	doc := &data.Document{
+	doc := &model.Document{
 		Title:           fileHeader.Filename,
 		FileName:        fileHeader.Filename,
 		FileSize:        fileHeader.Size,

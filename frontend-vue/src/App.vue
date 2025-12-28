@@ -3,15 +3,14 @@
 </template>
 
 <script setup>
-// App.vue 通常作为布局入口，不需要写复杂的逻辑
+// 这里通常留空，或者放全局逻辑
 </script>
 
 <style>
-/* 全局样式重置 */
-body, html {
+/* 全局重置样式，去掉浏览器默认边距 */
+body {
   margin: 0;
   padding: 0;
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 </style>

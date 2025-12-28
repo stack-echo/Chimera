@@ -1,110 +1,116 @@
 version: '3.8'
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: rag_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: rag_db
-    ports:
-      - "3306:3306"
-    volumes:
-      - ../local_data/mysql:/var/lib/mysql
-    networks:
-      - rag_net
-
-  redis:
-    image: redis:alpine
-    container_name: rag_redis
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    networks:
-      - rag_net
-
-  minio:
-    image: minio/minio
-    container_name: rag_minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
-    volumes:
-      - ../local_data/minio:/data
-    networks:
-      - rag_net
-
-  # === 核心替换：使用 Qdrant ===
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: rag_qdrant
-    ports:
-      - "6333:6333" # HTTP API
-      - "6334:6334" # gRPC API
-    volumes:
-      - ../local_data/qdrant:/qdrant/storage
-    networks:
-      - rag_net
-
-  # === 核心修改 3: Nebula 增加依赖检查和自动重启 ===
-  nebula-metad:
-    image: vesoft/nebula-metad:v3.6.0
-    container_name: rag_nebula_metad
-    command: --meta_server_addrs=rag_nebula_metad:9559 --local_ip=rag_nebula_metad --ws_ip=rag_nebula_metad --port=9559 --ws_http_port=19559 --data_path=/data/meta
-    volumes:
-      - ../local_data/nebula/meta:/data/meta
-    networks:
-      - rag_net
-
-  nebula-storaged:
-    image: vesoft/nebula-storaged:v3.6.0
-    container_name: rag_nebula_storaged
-    command: --meta_server_addrs=rag_nebula_metad:9559 --local_ip=rag_nebula_storaged --ws_ip=rag_nebula_storaged --port=9779 --ws_http_port=19779 --data_path=/data/storage
-    depends_on:
-      - nebula-metad
-    volumes:
-      - ../local_data/nebula/storage:/data/storage
-    networks:
-      - rag_net
-
-  nebula-graphd:
-    image: vesoft/nebula-graphd:v3.6.0
-    container_name: rag_nebula_graphd
-    ports:
-      - "9669:9669"
-    command: --meta_server_addrs=rag_nebula_metad:9559 --local_ip=rag_nebula_graphd --ws_ip=rag_nebula_graphd --port=9669 --ws_http_port=19669
-    depends_on:
-      - nebula-metad
-    networks:
-      - rag_net
-    restart: on-failure:5  # 修改这里：如果启动失败（因为metad没准备好），自动重启最多5次
-
-  #核心关系型数据库 (PostgreSQL)
+  # ----------------------------------------------------------------
+  # 1. 核心关系型数据库 (PostgreSQL) - 替代 MySQL
+  # ----------------------------------------------------------------
   postgres:
     image: postgres:15-alpine
-    container_name: rag_postgres
+    container_name: chimera_postgres
     restart: always
     environment:
-      POSTGRES_USER: rag_user
-      POSTGRES_PASSWORD: rag_password
-      POSTGRES_DB: rag_db
+      POSTGRES_USER: chimera_user      # 统一用户名
+      POSTGRES_PASSWORD: chimera_secret # 统一密码
+      POSTGRES_DB: chimera_main        # 统一库名
     ports:
       - "5432:5432"
     volumes:
       - ./local_data/postgres:/var/lib/postgresql/data
     networks:
-      - rag_net
+      - chimera_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chimera_user -d chimera_main"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # 2. 图数据库核心 (NebulaGraph Studio - 可视化管理)
-  # 注意：为了开发环境轻量化，我们暂时先只起 Studio 和核心服务
-  # 完整 Nebula 集群比较重，我们先用 Nebula Docker Compose 单机版核心
-  # 这里为了演示简洁，建议单独起一个 Nebula 专门的 yaml，或者使用 Nebula 官方的 Docker 镜像
-  # 咱们先只加 Postgres，Nebula 稍后单独部署以免把电脑卡死
+  # ----------------------------------------------------------------
+  # 2. 缓存与消息队列 (Redis)
+  # ----------------------------------------------------------------
+  redis:
+    image: redis:alpine
+    container_name: chimera_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    # 开启持久化并设置密码
+    command: redis-server --appendonly yes --requirepass chimera_secret
+    volumes:
+      - ./local_data/redis:/data
+    networks:
+      - chimera_net
+
+  # ----------------------------------------------------------------
+  # 3. 对象存储 (MinIO) - 存放 PDF/图片
+  # ----------------------------------------------------------------
+  minio:
+    image: minio/minio
+    container_name: chimera_minio
+    restart: always
+    ports:
+      - "9000:9000" # API 端口
+      - "9001:9001" # Console 端口
+    environment:
+      MINIO_ROOT_USER: chimera_minio
+      MINIO_ROOT_PASSWORD: chimera_minio_secret
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./local_data/minio:/data
+    networks:
+      - chimera_net
+
+  # ----------------------------------------------------------------
+  # 4. 向量数据库 (Qdrant) - 存放 Embedding
+  # ----------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: chimera_qdrant
+    restart: always
+    ports:
+      - "6333:6333" # HTTP API
+      - "6334:6334" # gRPC API
+    volumes:
+      - ./local_data/qdrant:/qdrant/storage
+    networks:
+      - chimera_net
+
+  # ----------------------------------------------------------------
+  # 5. 图数据库 (NebulaGraph) - v0.5.0 预留
+  # ----------------------------------------------------------------
+  nebula-metad:
+    image: vesoft/nebula-metad:v3.6.0
+    container_name: chimera_nebula_metad
+    restart: on-failure
+    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_metad --ws_ip=chimera_nebula_metad --port=9559 --ws_http_port=19559 --data_path=/data/meta
+    volumes:
+      - ./local_data/nebula/meta:/data/meta
+    networks:
+      - chimera_net
+
+  nebula-storaged:
+    image: vesoft/nebula-storaged:v3.6.0
+    container_name: chimera_nebula_storaged
+    restart: on-failure
+    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_storaged --ws_ip=chimera_nebula_storaged --port=9779 --ws_http_port=19779 --data_path=/data/storage
+    depends_on:
+      - nebula-metad
+    volumes:
+      - ./local_data/nebula/storage:/data/storage
+    networks:
+      - chimera_net
+
+  nebula-graphd:
+    image: vesoft/nebula-graphd:v3.6.0
+    container_name: chimera_nebula_graphd
+    restart: on-failure
+    ports:
+      - "9669:9669"
+    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_graphd --ws_ip=chimera_nebula_graphd --port=9669 --ws_http_port=19669
+    depends_on:
+      - nebula-metad
+    networks:
+      - chimera_net
 
 networks:
-  rag_net:
+  chimera_net:
     driver: bridge

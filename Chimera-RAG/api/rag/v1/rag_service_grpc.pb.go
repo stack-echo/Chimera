@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v3.20.3
-// source: rag_service.proto
+// source: rag.proto
 
 package v1
 
@@ -199,5 +199,5 @@ var LLMService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "rag_service.proto",
+	Metadata: "rag.proto",
 }

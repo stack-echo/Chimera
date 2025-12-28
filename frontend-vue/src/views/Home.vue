@@ -1,345 +1,447 @@
 <template>
-  <div class="app-container">
-    <div class="header">
-      <div class="brand">🦄 Chimera-RAG</div>
-      <div class="user-info">
-        <span>{{ userStore.userInfo.username }}</span>
-        <a-button type="text" status="danger" size="mini" @click="handleLogout">退出</a-button>
+  <div class="home-container">
+    <div class="sidebar">
+      <div class="brand-area">
+        <h2>Chimera RAG</h2>
+        <span class="version-tag">v0.4.0 SaaS</span>
+      </div>
+
+      <div class="context-section">
+        <label class="section-label">当前工作区 (Org)</label>
+        <select
+            :value="userStore.currentOrgId"
+            @change="handleOrgChange"
+            class="org-selector"
+        >
+          <option
+              v-for="org in userStore.userOrgs"
+              :key="org.org_id"
+              :value="org.org_id"
+          >
+            {{ org.name }}
+          </option>
+        </select>
+
+        <div class="debug-info">
+          <small>Org ID: {{ userStore.currentOrgId }}</small>
+          <small>KB ID: {{ userStore.currentKbId }}</small>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="upload-section">
+        <label class="section-label">知识库录入</label>
+        <div class="file-drop-zone">
+          <input type="file" ref="fileInput" @change="resetUploadStatus" />
+        </div>
+
+        <button
+            @click="triggerUpload"
+            :disabled="uploading || !fileInput?.files?.length"
+            class="action-btn upload-btn"
+            :class="{ 'processing': uploading }"
+        >
+          {{ uploading ? '正在解析 ETL...' : '上传并入库' }}
+        </button>
+
+        <div v-if="uploadStatus" :class="['status-msg', uploadStatusType]">
+          {{ uploadStatus }}
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="user-profile">
+        <div class="avatar">{{ userStore.userInfo.name?.[0]?.toUpperCase() || 'U' }}</div>
+        <div class="info">
+          <div class="username">{{ userStore.userInfo.name || 'User' }}</div>
+          <button @click="handleLogout" class="logout-link">退出登录</button>
+        </div>
       </div>
     </div>
 
-    <div class="main-content">
-      <div class="chat-panel" :class="{ 'full-width': !currentPdfUrl }">
-        <div class="messages" ref="msgListRef">
-          <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
-            <div class="avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
-            <div class="content">
-              <div v-if="msg.thinking" class="thinking-box">
-                <div class="think-title">Thinking...</div>
-                <div class="think-content">{{ msg.thinking }}</div>
-              </div>
+    <div class="main-area">
+      <header class="chat-header">
+        <div class="header-content">
+          <h3>{{ userStore.currentOrgName }} 智能助手</h3>
+          <span class="status-badge online">在线</span>
+        </div>
+        <button @click="clearHistory" class="clear-btn" title="清空对话">
+          🗑️ 清空记录
+        </button>
+      </header>
 
-              <div v-html="renderMarkdown(msg.content)"></div>
-
-              <div v-if="msg.citations && msg.citations.length" class="citation-box">
-                <div class="citation-title">参考来源:</div>
-                <div
-                    v-for="(cite, idx) in msg.citations"
-                    :key="idx"
-                    class="citation-item"
-                    @click="openPdfPage(cite.file_name, cite.page_number)"
-                >
-                  📄 {{ cite.file_name }} (P{{ cite.page_number }})
-                </div>
-              </div>
-            </div>
-          </div>
-          <div v-if="loading" class="loading">AI 正在思考...</div>
+      <div class="messages-container" ref="chatContainer">
+        <div v-if="messages.length === 0" class="empty-state">
+          <p>👋 欢迎来到 <b>{{ userStore.currentOrgName }}</b></p>
+          <p>请上传文档，或直接提问。</p>
         </div>
 
-        <div class="input-area">
-          <a-upload action="/" :custom-request="customRequest" :show-file-list="false">
-            <template #upload-button>
-              <a-button type="secondary" shape="circle"><icon-upload /></a-button>
-            </template>
-          </a-upload>
-          <a-input v-model="inputVal" @press-enter="sendMsg" placeholder="输入问题..." style="margin: 0 10px; flex: 1" />
-          <a-button type="primary" @click="sendMsg" :disabled="loading">发送</a-button>
+        <div
+            v-for="(msg, index) in messages"
+            :key="index"
+            :class="['message-row', msg.role]"
+        >
+          <div class="avatar">
+            {{ msg.role === 'user' ? '👤' : '🤖' }}
+          </div>
+          <div class="message-bubble">
+            <div class="message-text">{{ msg.content }}</div>
+            <span v-if="msg.role === 'ai' && msg.loading" class="typing-cursor">|</span>
+          </div>
         </div>
       </div>
 
-      <div class="pdf-panel" v-if="currentPdfUrl">
-        <div class="pdf-header">
-          <span class="pdf-title">📄 {{ currentPdfName }}</span>
-          <a-button size="mini" @click="closePdf">关闭</a-button>
-        </div>
-        <div class="pdf-viewer" ref="pdfContainer">
-          <VuePdfEmbed
-              :source="currentPdfUrl"
-              :page="targetPage"
-              class="pdf-embed"
-              width="800"
+      <div class="input-section">
+        <div class="input-wrapper">
+          <input
+              v-model="query"
+              @keyup.enter="sendMessage"
+              :placeholder="`向 ${userStore.currentOrgName} 提问...`"
+              :disabled="loading"
           />
+          <button @click="sendMessage" :disabled="loading || !query.trim()">
+            {{ loading ? '...' : '发送' }}
+          </button>
         </div>
+        <div class="footer-note">Chimera-RAG 生成的内容可能包含幻觉，请以原文为准。</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-// 1. 所有的 Import 必须放在顶部
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import VuePdfEmbed from 'vue-pdf-embed'
-import MarkdownIt from 'markdown-it'
-import { IconUpload } from '@arco-design/web-vue/es/icon'
-import request from '../api/request'
-import { useUserStore } from '../store/user'
+import { ref, reactive, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { useUserStore } from '../store/user'
+import request from '../api/request' // 用于上传 (Axios)
 
-const userStore = useUserStore()
+// 1. 初始化
 const router = useRouter()
-const md = new MarkdownIt()
+const userStore = useUserStore()
+const chatContainer = ref(null)
+const fileInput = ref(null)
 
-// 状态
-const messages = ref([])
-const inputVal = ref('')
+// 2. 响应式状态
+const query = ref('')
+const messages = reactive([])
 const loading = ref(false)
-const msgListRef = ref(null)
+const uploading = ref(false)
+const uploadStatus = ref('')
+const uploadStatusType = ref('info') // info, success, error
 
-// PDF 预览状态
-const currentPdfUrl = ref('')
-const currentPdfName = ref('')
-const targetPage = ref(1) // 控制显示的页码，如果不传则显示全部
-
-// ---------------------------------------------------------
-// 🛠️ 事件监听处理 (修复 onUnmounted 报错)
-// ---------------------------------------------------------
-
-// 定义一个具名函数，方便 add 和 remove
-const handleOpenPdfEvent = (e) => {
-  if (e.detail) {
-    console.log('接收到跳转事件:', e.detail)
-    openPdfPage(e.detail.filename, parseInt(e.detail.page))
+// 3. 核心功能：滚动到底部
+const scrollToBottom = async () => {
+  await nextTick()
+  if (chatContainer.value) {
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
   }
 }
 
-// 挂载全局方法给 HTML 字符串里的 onclick 调用
-window.openPdf = (filename, page) => {
-  const event = new CustomEvent('open-pdf', { detail: { filename, page } });
-  window.dispatchEvent(event);
+// 4. 核心功能：切换组织 (Context Switch)
+const handleOrgChange = (e) => {
+  const newOrgId = parseInt(e.target.value)
+  const targetOrg = userStore.userOrgs.find(o => o.org_id === newOrgId)
+
+  if (targetOrg) {
+    // 关键：更新 Pinia 状态
+    userStore.setContext(targetOrg)
+    // 关键：清空当前对话，防止数据串台
+    clearHistory()
+    resetUploadStatus()
+  }
 }
 
-onMounted(() => {
-  window.addEventListener('open-pdf', handleOpenPdfEvent)
-})
-
-onUnmounted(() => {
-  // 🔥 修复点：必须传入同一个函数引用，且不能写 ...
-  window.removeEventListener('open-pdf', handleOpenPdfEvent)
-  // 清理 Blob URL 避免内存泄漏
-  if (currentPdfUrl.value) URL.revokeObjectURL(currentPdfUrl.value)
-})
-
-// ---------------------------------------------------------
-// 业务逻辑
-// ---------------------------------------------------------
+const clearHistory = () => {
+  messages.splice(0, messages.length)
+}
 
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
 }
 
-// 渲染 MD
-const renderMarkdown = (text) => {
-  if (!text) return ''
-  let html = md.render(text)
-
-  // 替换引用格式 <<filename|page>>
-  const citationRegex = /(&lt;&lt;|<<)\s*(.*?)\s*\|\s*(\d+)\s*(&gt;&gt;|>>)/g;
-  html = html.replace(citationRegex, (match, p1, filename, page) => {
-    return `<span class="citation-highlight" onclick="window.openPdf('${filename}', ${page})">📄 [P${page}]</span>`
-  })
-  return html
+// 5. 核心功能：上传文件 (调用 Go 接口)
+const resetUploadStatus = () => {
+  uploadStatus.value = ''
+  uploadStatusType.value = 'info'
 }
 
-// 上传
-const customRequest = async (option) => {
-  const { onError, onSuccess, fileItem } = option
+const triggerUpload = async () => {
+  const file = fileInput.value?.files[0]
+  if (!file) return
+
+  uploading.value = true
+  uploadStatus.value = '📤 正在上传并触发 ETL 解析...'
+  uploadStatusType.value = 'info'
+
   const formData = new FormData()
-  formData.append('file', fileItem.file)
+  formData.append('file', file)
+  // 🔥 关键：带上当前的 KB ID，保证传到正确的库
+  formData.append('kb_id', userStore.currentKbId)
 
   try {
-    const res = await request.post('/upload', formData)
-    onSuccess(res)
-    // 假设后端返回 res.path 是文件名
-    openPdfPage(res.path, 1)
-    messages.value.push({ role: 'assistant', content: `✅ 文件 **${fileItem.file.name}** 上传成功！正在后台解析...` })
-  } catch (error) {
-    onError(error)
-  }
-}
+    // 使用 axios 实例 (src/api/request.js)
+    const res = await request.post('/files/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
 
-// 打开 PDF (获取 Blob)
-const openPdfPage = (filename, page) => {
-  // 如果已经在看这个文件，只跳页码
-  if (currentPdfName.value === filename && currentPdfUrl.value) {
-    targetPage.value = page
-    return
-  }
-  fetchPdfBlob(filename, page)
-}
-
-const fetchPdfBlob = async (filename, page) => {
-  try {
-    const res = await request.get(`/file/${filename}`, { responseType: 'blob' })
-    const blob = new Blob([res], { type: 'application/pdf' })
-
-    // 释放旧的 URL
-    if (currentPdfUrl.value) URL.revokeObjectURL(currentPdfUrl.value)
-
-    currentPdfUrl.value = URL.createObjectURL(blob)
-    currentPdfName.value = filename
-    targetPage.value = page
+    uploadStatus.value = `✅ 上传成功! 文档ID: ${res.data.doc_id}。后台正在切片入库...`
+    uploadStatusType.value = 'success'
+    fileInput.value.value = '' // 清空 input
   } catch (e) {
-    console.error("加载PDF失败", e)
+    console.error(e)
+    uploadStatus.value = `❌ 上传失败: ${e.response?.data?.msg || e.message}`
+    uploadStatusType.value = 'error'
+  } finally {
+    uploading.value = false
   }
 }
 
-const closePdf = () => {
-  if (currentPdfUrl.value) URL.revokeObjectURL(currentPdfUrl.value)
-  currentPdfUrl.value = ''
-  currentPdfName.value = ''
-}
+// 6. 核心功能：流式对话 (调用 Go -> Python)
+// ⚠️ 这里使用原生 fetch，因为 axios 处理流比较麻烦
+const sendMessage = async () => {
+  if (!query.value.trim() || loading.value) return
 
-// 发送消息
-const sendMsg = async () => {
-  if (!inputVal.value.trim()) return
-  messages.value.push({ role: 'user', content: inputVal.value })
-  const userQ = inputVal.value
-  inputVal.value = ''
+  const userQ = query.value
+  query.value = '' // 清空输入框
+
+  // 添加用户消息
+  messages.push({ role: 'user', content: userQ })
+  scrollToBottom()
+
+  // 添加 AI 占位消息
+  const aiMsg = reactive({ role: 'ai', content: '', loading: true })
+  messages.push(aiMsg)
   loading.value = true
 
-  const aiMsgIndex = messages.value.length
-  messages.value.push({ role: 'assistant', content: '', thinking: '', citations: [] })
-
   try {
-    await fetchEventSource('http://localhost:8080/api/v1/chat/stream', {
+    const response = await fetch('/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // 🔥 关键：手动添加 Token，因为原生 fetch 不走 axios 拦截器
         'Authorization': `Bearer ${userStore.token}`
       },
-      body: JSON.stringify({ query: userQ }),
-      onmessage(msg) {
-        const data = msg.data
-        if (data.startsWith('THINKing: ')) {
-          messages.value[aiMsgIndex].thinking += data.replace('THINKing: ', '') + '\n'
-        } else if (data.startsWith('ANSWER: ')) {
-          // 兼容 v0.2.0/v0.3.0 的后端逻辑，如果后端发的是 ANSWER: 前缀
-          messages.value[aiMsgIndex].content += data.replace('ANSWER: ', '')
-        } else if (!data.startsWith('SOURCE: ')) {
-          // 默认处理 (假设全是正文)
-          messages.value[aiMsgIndex].content += data
-        }
-
-        nextTick(() => {
-          if(msgListRef.value) msgListRef.value.scrollTop = msgListRef.value.scrollHeight
-        })
-      },
-      onclose() { loading.value = false },
-      onerror(err) { throw err }
+      body: JSON.stringify({
+        query: userQ,
+        kb_id: userStore.currentKbId,  // 必传：当前知识库 ID
+        org_id: userStore.currentOrgId, // 必传：当前组织 ID
+        stream: true
+      })
     })
-  } catch (err) {
+
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.statusText}`)
+    }
+
+    // 处理流式响应
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      // 简单拼接 (如果后端返回的是纯文本流)
+      aiMsg.content += chunk
+      scrollToBottom()
+    }
+
+  } catch (e) {
+    aiMsg.content += `\n[系统错误: ${e.message}]`
+  } finally {
+    aiMsg.loading = false
     loading.value = false
-    messages.value[aiMsgIndex].content += '\n*(网络连接异常)*'
+    scrollToBottom()
   }
 }
 </script>
 
 <style scoped>
-.app-container {
+/* ================= 布局样式 ================= */
+.home-container {
+  display: flex;
   height: 100vh;
+  background-color: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* --- 侧边栏 --- */
+.sidebar {
+  width: 280px;
+  background: #ffffff;
+  border-right: 1px solid #e1e4e8;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
+  padding: 20px;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.02);
 }
-.header {
-  height: 50px;
+
+.brand-area {
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-area h2 { margin: 0; font-size: 20px; color: #1f2d3d; }
+.version-tag { background: #e6f7ff; color: #1890ff; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+
+.section-label {
+  display: block;
+  font-size: 12px;
+  color: #8492a6;
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.org-selector {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background-color: #fff;
+  font-size: 14px;
+  margin-bottom: 5px;
+  cursor: pointer;
+}
+.org-selector:focus { border-color: #1890ff; outline: none; }
+
+.debug-info { font-size: 10px; color: #c0c4cc; display: flex; gap: 10px; margin-bottom: 20px; }
+
+.divider { height: 1px; background: #ebeef5; margin: 10px 0 20px 0; }
+
+.file-drop-zone input { width: 100%; font-size: 12px; }
+
+.action-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+.upload-btn { background: #1890ff; color: white; }
+.upload-btn:hover { background: #40a9ff; }
+.upload-btn:disabled { background: #a0cfff; cursor: not-allowed; }
+.upload-btn.processing { cursor: wait; opacity: 0.8; }
+
+.status-msg { font-size: 12px; margin-top: 10px; line-height: 1.4; padding: 8px; border-radius: 4px; }
+.status-msg.info { color: #606266; background: #f4f4f5; }
+.status-msg.success { color: #67c23a; background: #f0f9eb; }
+.status-msg.error { color: #f56c6c; background: #fef0f0; }
+
+.spacer { flex: 1; }
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 15px;
+  border-top: 1px solid #ebeef5;
+}
+.user-profile .avatar {
+  width: 36px; height: 36px;
+  background: #7265e6; color: white;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold;
+}
+.user-profile .info { display: flex; flex-direction: column; }
+.user-profile .username { font-weight: 600; font-size: 14px; color: #303133; }
+.logout-link { border: none; background: none; color: #909399; font-size: 12px; cursor: pointer; padding: 0; text-align: left; }
+.logout-link:hover { color: #f56c6c; }
+
+/* --- 主区域 --- */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   background: white;
-  border-bottom: 1px solid #ddd;
+}
+
+.chat-header {
+  height: 60px;
+  border-bottom: 1px solid #e1e4e8;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 20px;
 }
-.brand { font-weight: bold; font-size: 18px; }
-.main-content {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
+.chat-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.status-badge { font-size: 12px; margin-left: 8px; padding: 2px 6px; border-radius: 10px; }
+.status-badge.online { background: #e1f3d8; color: #67c23a; }
+.clear-btn { background: none; border: 1px solid #dcdfe6; padding: 5px 10px; border-radius: 4px; color: #606266; cursor: pointer; font-size: 12px; }
+.clear-btn:hover { border-color: #f56c6c; color: #f56c6c; }
 
-/* 左侧聊天 */
-.chat-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid #ddd;
-  max-width: 50%; /* 默认宽度 */
-  transition: max-width 0.3s ease; /* 加个动画 */
-}
-/* 🔥 关键优化：如果没有 PDF，聊天框占满 */
-.chat-panel.full-width {
-  max-width: 100%;
-  border-right: none;
-}
-
-.messages { flex: 1; overflow-y: auto; padding: 20px; }
-.input-area { padding: 20px; background: white; display: flex; align-items: center; }
-
-/* 右侧 PDF */
-.pdf-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #525659;
-  min-width: 0;
-  height: 100%;
-}
-
-.pdf-header {
-  height: 40px;
-  background: #333;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 15px;
-}
-.pdf-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 80%;
-}
-
-.pdf-viewer {
+.messages-container {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
   display: flex;
-  justify-content: center;
-}
-.pdf-embed {
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  /* 确保 PDF 不会撑破容器，并在容器内自适应 */
-  width: 90%;
-  height: auto;
-  display: block;
+  flex-direction: column;
+  gap: 20px;
+  background: #f9fafc;
 }
 
-/* 样式穿透 */
-:deep(.citation-highlight) {
-  color: #165dff;
-  font-weight: bold;
+.empty-state { text-align: center; color: #909399; margin-top: 100px; }
+
+.message-row { display: flex; gap: 12px; max-width: 80%; }
+.message-row.user { align-self: flex-end; flex-direction: row-reverse; }
+.message-row.ai { align-self: flex-start; }
+
+.message-row .avatar {
+  width: 32px; height: 32px;
+  background: #fff; border: 1px solid #dcdfe6;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.message-row.user .avatar { background: #d9ecff; border: none; }
+
+.message-bubble {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.message-row.user .message-bubble { background: #1890ff; color: white; border-top-right-radius: 2px; }
+.message-row.ai .message-bubble { background: white; color: #303133; border: 1px solid #ebeef5; border-top-left-radius: 2px; }
+
+.message-text { white-space: pre-wrap; /* 关键：保留换行 */ word-break: break-word; }
+
+.typing-cursor { display: inline-block; animation: blink 1s infinite; margin-left: 5px; font-weight: bold; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.input-section { padding: 20px; border-top: 1px solid #e1e4e8; background: white; }
+.input-wrapper { display: flex; gap: 10px; }
+.input-wrapper input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  outline: none;
+  font-size: 14px;
+}
+.input-wrapper input:focus { border-color: #1890ff; }
+.input-wrapper button {
+  padding: 0 25px;
+  background: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
   cursor: pointer;
-  background: rgba(22, 93, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin: 0 2px;
 }
-:deep(.citation-highlight:hover) {
-  background: rgba(22, 93, 255, 0.2);
-  text-decoration: underline;
-}
-.think-content {
-  white-space: pre-wrap;
-  font-family: monospace;
-}
-/* 复用消息样式 */
-.message { display: flex; margin-bottom: 20px; }
-.message.user { flex-direction: row-reverse; }
-.content { background: white; padding: 10px; border-radius: 8px; max-width: 80%; }
-.thinking-box { background: #f0f9ff; padding: 8px; font-size: 0.85em; color: #666; border-left: 3px solid #165dff; margin-bottom: 5px; }
+.input-wrapper button:disabled { background: #a0cfff; }
+
+.footer-note { text-align: center; font-size: 11px; color: #c0c4cc; margin-top: 10px; }
 </style>
