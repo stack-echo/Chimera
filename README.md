@@ -1,6 +1,6 @@
-# 🦄 Chimera-RAG (v0.3.5)
+# 🦄 Chimera (v0.4.0)
 
-Chimera-RAG 是一个基于 **Go + Python** 混合架构的企业级 EHS 安全合规知识库助手。它实现了完整的 RAG (检索增强生成) 链路，具备**文档视觉理解**与**可验证的智能问答**能力。
+Chimera 是一个基于 **Go + Python** 混合架构的企业级多智能体平台。它实现了完整的 RAG (检索增强生成) 链路，能够对多智能体的行为进行链路追踪，具备**文档视觉理解**与**可验证的智能问答**能力。
 
 ## ✨ 核心特性
 
@@ -20,6 +20,7 @@ Chimera-RAG 是一个基于 **Go + Python** 混合架构的企业级 EHS 安全�
 - **MinIO 流式代理**：安全的文件流传输，不暴露公有 URL。
 - **清晰架构**：Python 服务重构为 `core`, `tools`, `service` 三层，提升可扩展性。
 - **可验证性设计**：每个回答都可追溯到原始文档的具体位置。
+- **多租户**：区分用户和组织。
 
 ## 🛠️ 技术栈
 
@@ -46,7 +47,7 @@ docker-compose up -d
 
 ### 2. 启动 AI 服务 (Python)
 ```bash
-cd ai-service-python
+cd chimera-agent-runtime
 # 1. 安装依赖
 pip install -r requirements.txt
 
@@ -92,4 +93,14 @@ v0.1.0: 基础 RAG 链路，支持 PDF 上传与问答
 
 v0.2.0: 完整的用户认证系统 (JWT + PostgreSQL)，重构的python代码
 
-v0.3.0: 🎉 本版本 - 文档视觉理解 + 可验证问答
+v0.3.0: 文档视觉理解 + 可验证问答
+
+v0.4.0: 🎉 本版本 多租户与隔离架构
+
+v0.5.0: ⚡ 生产级运行时与全链路观测 (当前开发中)
+
+深度集成 SigNoz：利用 OpenTelemetry 实现从网关到 AI Skill 的全链路追踪。
+
+Agent 推理透明化：通过 AgentMeta 实时向前端推送 AI 的“思考过程”与 trace_id。
+
+架构重组：引入 skills/ 目录，将 Docling 解析与 MinIO 存取标准化为原子能力。
