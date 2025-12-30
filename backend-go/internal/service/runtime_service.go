@@ -120,6 +120,7 @@ func (s *RuntimeService) StreamChat(ctx context.Context, userID uint, req dto.Ch
 		case "delta":
 			// 只有答案片段才推给前端
 			respChan <- resp.Payload
+			fullAnswerBuilder.WriteString(resp.Payload)
 		case "thought":
 			// 思考过程 (可以在日志看，或者协议支持 SSE event: thought)
 			log.Printf("🤔 [Thought]: %s", resp.Payload)

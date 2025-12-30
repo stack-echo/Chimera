@@ -42,47 +42,60 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
-// import request from '../api/request'
+import request from '../api/request' // 🔥 引入 axios 实例
 
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
 
 const form = reactive({
-  username: 'admin',
+  username: 'admin', // 默认填好方便测试
   password: '123',
-  role: 'user' // 默认为普通用户
+  role: 'user'
 })
 
 const handleLogin = async () => {
+  if (!form.username || !form.password) {
+    alert('请输入账号密码')
+    return
+  }
+
   loading.value = true
 
-  // 模拟 API 请求延时
-  setTimeout(() => {
-    // 假设这是后端返回的数据
-    const mockResponse = {
-      token: 'mock-jwt-token-xyz',
-      user: {
-        id: 1,
-        name: form.username,
-        role: form.role // 后端告诉我们这个用户是什么角色
-      }
+  try {
+    // 🔥 1. 调用真实后端接口
+    const res = await request.post('/auth/login', {
+      username: form.username,
+      password: form.password
+    })
+
+    // 注意：根据你的 Go AuthHandler，返回结构应该是 { token: "...", username: "...", user_id: 1 }
+    // 如果你的 request.js 拦截器里没有剥离 data 层，这里可能需要 res.data.token
+
+    // 假设 request.js 拦截器直接返回了 response.data
+    const token = res.token
+    const user = {
+      name: res.username,
+      id: res.user_id,
+      role: form.role // 暂时前端透传，实际上应该解析 Token 或由后端返回
     }
 
-    // 1. 调用 Store 更新状态
-    userStore.login(mockResponse.token, mockResponse.user)
+    // 2. 存入 Pinia 和 LocalStorage
+    userStore.login(token, user)
 
-    // 2. 根据角色路由分流
+    // 3. 跳转
     if (form.role === 'admin') {
-      alert('欢迎管理员！即将进入控制台...')
-      router.push('/admin')
+      router.push('/admin/insights') // 直接跳到监控台
     } else {
-      alert('欢迎回来！即将进入对话工作台...')
-      router.push('/chat') // 也就是之前的 Home.vue
+      router.push('/chat')
     }
 
+  } catch (e) {
+    console.error(e)
+    alert('登录失败: ' + (e.response?.data?.error || e.message))
+  } finally {
     loading.value = false
-  }, 800)
+  }
 }
 </script>
 

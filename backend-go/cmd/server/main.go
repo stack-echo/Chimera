@@ -53,6 +53,7 @@ func main() {
 	orgService := service.NewOrgService(d)
 	kbService := service.NewKBService(d)
 	authService := service.NewAuthService(userRepo)
+	logService := service.NewLogService(d)
 
 	// 5. 初始化 Handler (控制器)
 	orgHandler := handler.NewOrgHandler(orgService)
@@ -60,6 +61,7 @@ func main() {
 	fileHandler := handler.NewFileHandler(RuntimeService)
 	authHandler := handler.NewAuthHandler(authService)
 	chatHandler := handler.NewChatHandler(RuntimeService)
+	logHandler := handler.NewLogHandler(logService)
 
 	// 6. 初始化 Gin Web Server
 	r := gin.Default()
@@ -98,6 +100,9 @@ func main() {
 			// 知识库路由
 			protected.POST("/kbs", kbHandler.Create)
 			protected.GET("/kbs", kbHandler.List)
+			// 监控相关路由
+			protected.GET("/logs", logHandler.List)
+			protected.GET("/stats", logHandler.Stats)
 		}
 		protected.GET("/file/:filename", chatHandler.HandleGetFile)
 	}
