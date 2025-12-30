@@ -1,21 +1,23 @@
 package handler
 
 import (
-	"Chimera-RAG/backend-go/internal/dto"
-	"Chimera-RAG/backend-go/internal/service"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"Chimera/backend-go/internal/dto"
+	"Chimera/backend-go/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ChatHandler struct {
-	svc *service.RagService
+	svc *service.RuntimeService
 }
 
-func NewChatHandler(svc *service.RagService) *ChatHandler {
+func NewChatHandler(svc *service.RuntimeService) *ChatHandler {
 	return &ChatHandler{svc: svc}
 }
 
@@ -38,12 +40,10 @@ func (h *ChatHandler) HandleChatSSE(c *gin.Context) {
 	}
 
 	// 3. 创建通道用于接收 Service 的流式返回
-	// (放在这里是因为不管流不流，Service 都需要这个通道)
 	respChan := make(chan string)
 
-	// 4. 异步调用 Service (生产数据)
-	// 注意：请确保 h.svc.StreamChat 内部在发完消息后会 close(respChan)，否则下面会死锁
-	// 传入 userID.(uint)
+	// 4. 异步调用 Service
+	// 注意：传入 userID.(uint)
 	go h.svc.StreamChat(c.Request.Context(), userID.(uint), req, respChan)
 
 	// ==========================================
@@ -51,24 +51,23 @@ func (h *ChatHandler) HandleChatSSE(c *gin.Context) {
 	// ==========================================
 	if !req.Stream {
 		var fullAnswer string
-		// 循环读取通道，直到 Service 关闭通道
+		// 循环读取通道
 		for msg := range respChan {
-			fullAnswer += msg
+			// 简单过滤掉 THINKING 标签，只返回内容 (或者你可以选择都返回)
+			if !strings.HasPrefix(msg, "THOUGHT:") {
+				fullAnswer += msg
+			}
 		}
-		
+
 		if strings.Contains(fullAnswer, "ERR: ⛔️") {
-			// 如果检测到这个特定的错误标记，返回 403 Forbidden
 			c.JSON(http.StatusForbidden, gin.H{
-				"error":   "Access Denied: You do not have permission to access this Knowledge Base.",
-				"details": fullAnswer,
+				"error": "Access Denied",
 			})
 			return
 		}
 
-		// 拼接完成后，一次性返回 JSON
 		c.JSON(http.StatusOK, gin.H{
-			"answer":  fullAnswer,
-			"sources": []string{}, // 如果你的 channel 还没传 sources，暂时留空
+			"answer": fullAnswer,
 		})
 		return
 	}
@@ -83,6 +82,7 @@ func (h *ChatHandler) HandleChatSSE(c *gin.Context) {
 
 	c.Stream(func(w io.Writer) bool {
 		if msg, ok := <-respChan; ok {
+			// 直接透传给前端，前端去解析 "THOUGHT:" 前缀
 			c.SSEvent("message", msg)
 			return true
 		}
@@ -90,62 +90,74 @@ func (h *ChatHandler) HandleChatSSE(c *gin.Context) {
 	})
 }
 
-// HandleUpload 修改版
+// HandleUpload 修改版：适配 DataSource 和 KB_ID
 func (h *ChatHandler) HandleUpload(c *gin.Context) {
 	// 1. 获取用户 ID
-	userID := c.GetUint("userID") // 假设中间件设置了 uint 类型的 userID
+	userID := c.GetUint("userID")
 
 	// 2. 获取文件
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(400, gin.H{"error": "文件无效"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "文件无效"})
 		return
 	}
 
-	// 3. 调用 Service
-	doc, err := h.svc.UploadDocument(c.Request.Context(), fileHeader, userID)
+	// 3. 🔥 获取 kb_id (新增必填项)
+	kbIDStr := c.PostForm("kb_id")
+	if kbIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 kb_id 参数"})
+		return
+	}
+	kbID, err := strconv.Atoi(kbIDStr)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "kb_id 格式错误"})
 		return
 	}
 
-	// 4. 返回结果
-	c.JSON(200, gin.H{
-		"msg":    "上传成功",
-		"doc_id": doc.ID,
-		"path":   doc.StoragePath,
+	// 4. 调用 Service (传入 kbID)
+	// 返回值现在是 *model.DataSource
+	dataSource, err := h.svc.UploadDocument(c.Request.Context(), fileHeader, userID, uint(kbID))
+	if err != nil {
+		// 简单区分一下错误类型
+		statusCode := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "权限不足") || strings.Contains(err.Error(), "不存在") {
+			statusCode = http.StatusForbidden
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 5. 返回结果 (适配 DataSource 字段)
+	c.JSON(http.StatusOK, gin.H{
+		"msg": "上传成功",
+		"data": gin.H{
+			"id":     dataSource.ID,
+			"name":   dataSource.Name,   // 文件名
+			"status": dataSource.Status, // pending / parsing
+			"type":   dataSource.Type,   // file
+		},
 	})
 }
 
 // HandleGetFile 下载/预览文件
-// GET /api/v1/file/:filename
 func (h *ChatHandler) HandleGetFile(c *gin.Context) {
 	filename := c.Param("filename")
 
-	// 1. 调用 Service 层获取流
-	// 注意：obj 是一个 ReadCloser，必须关闭
 	obj, size, err := h.svc.GetFile(c.Request.Context(), filename)
 	if err != nil {
-		// 生产环境建议区分 "文件不存在" 和 "服务器错误"
 		c.JSON(http.StatusNotFound, gin.H{"error": "文件获取失败: " + err.Error()})
 		return
 	}
-	// 🔥 重要：流传输完成后关闭连接
 	defer obj.Close()
 
-	// 2. 设置 HTTP 响应头
-	// 告诉浏览器这是一个 PDF，文件大小是多少（方便显示进度条）
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Content-Disposition", "inline; filename="+filename) // inline=浏览器内预览, attachment=强制下载
-	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", "inline; filename="+filename)
+	c.Header("Content-Type", "application/pdf") // 假设都是 PDF，生产环境应根据后缀判断
 	c.Header("Content-Length", fmt.Sprintf("%d", size))
 
-	// 3. 将流拷贝到响应体 (Stream)
-	// 这一步会阻塞直到文件传输完成，内存占用极低
 	_, err = io.Copy(c.Writer, obj)
 	if err != nil {
-		// 如果传输过程中断，通常也没法写 JSON 错误了，只能记录日志
 		fmt.Printf("Stream file error: %v\n", err)
 	}
 }

@@ -1,0 +1,15 @@
+agent_id: "kg_linker_expert"
+model: "deepseek-chat"
+temperature: 0.0
+template: |
+  你是一个知识图谱实体链接专家。
+  
+  【当前实体】：{{ entity_name }} (类型: {{ entity_type }})
+  【上下文内容】：{{ context_text }}
+  【图谱候选节点】：{{ candidates }}
+  
+  任务：判断当前实体是否指向候选节点中的某一个。
+  - 如果匹配，请返回该节点的 VID。
+  - 如果不匹配或无候选，请返回 "NEW"。
+  
+  仅返回 JSON: {"decision": "VID_OR_NEW", "reason": "理由"}

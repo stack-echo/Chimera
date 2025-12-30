@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"Chimera-RAG/backend-go/internal/dto"
-	"Chimera-RAG/backend-go/internal/service"
+	"Chimera/backend-go/internal/dto"
+	"Chimera/backend-go/internal/service"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )

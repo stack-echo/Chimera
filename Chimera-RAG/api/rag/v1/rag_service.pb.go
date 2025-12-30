@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.20.3
-// source: rag.proto
+// source: runtime.proto
 
 package v1
 
@@ -441,7 +441,7 @@ const file_rag_service_proto_rawDesc = "" +
 	"\ffile_content\x18\x01 \x01(\fR\vfileContent\x12\x1b\n" +
 	"\tfile_name\x18\x02 \x01(\tR\bfileName\"9\n" +
 	"\rParseResponse\x12(\n" +
-	"\x06chunks\x18\x01 \x03(\v2\x10.rag.v1.DocChunkR\x06chunks\"]\n" +
+	"\x06chunks\x18\x01 \x03(\v2\x10.runtime.v1.DocChunkR\x06chunks\"]\n" +
 	"\bDocChunk\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\x12\x16\n" +
 	"\x06vector\x18\x02 \x03(\x02R\x06vector\x12\x1f\n" +
@@ -449,9 +449,9 @@ const file_rag_service_proto_rawDesc = "" +
 	"pageNumber2\xbc\x01\n" +
 	"\n" +
 	"LLMService\x126\n" +
-	"\tAskStream\x12\x12.rag.v1.AskRequest\x1a\x13.rag.v1.AskResponse0\x01\x128\n" +
-	"\tEmbedData\x12\x14.rag.v1.EmbedRequest\x1a\x15.rag.v1.EmbedResponse\x12<\n" +
-	"\rParseAndEmbed\x12\x14.rag.v1.ParseRequest\x1a\x15.rag.v1.ParseResponseB\x1bZ\x19Chimera-RAG/api/rag/v1;v1b\x06proto3"
+	"\tAskStream\x12\x12.runtime.v1.AskRequest\x1a\x13.runtime.v1.AskResponse0\x01\x128\n" +
+	"\tEmbedData\x12\x14.runtime.v1.EmbedRequest\x1a\x15.runtime.v1.EmbedResponse\x12<\n" +
+	"\rParseAndEmbed\x12\x14.runtime.v1.ParseRequest\x1a\x15.runtime.v1.ParseResponseB\x1bZ\x19Chimera/api/runtime/v1;v1b\x06proto3"
 
 var (
 	file_rag_service_proto_rawDescOnce sync.Once
@@ -467,22 +467,22 @@ func file_rag_service_proto_rawDescGZIP() []byte {
 
 var file_rag_service_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_rag_service_proto_goTypes = []any{
-	(*AskRequest)(nil),    // 0: rag.v1.AskRequest
-	(*AskResponse)(nil),   // 1: rag.v1.AskResponse
-	(*EmbedRequest)(nil),  // 2: rag.v1.EmbedRequest
-	(*EmbedResponse)(nil), // 3: rag.v1.EmbedResponse
-	(*ParseRequest)(nil),  // 4: rag.v1.ParseRequest
-	(*ParseResponse)(nil), // 5: rag.v1.ParseResponse
-	(*DocChunk)(nil),      // 6: rag.v1.DocChunk
+	(*AskRequest)(nil),    // 0: runtime.v1.AskRequest
+	(*AskResponse)(nil),   // 1: runtime.v1.AskResponse
+	(*EmbedRequest)(nil),  // 2: runtime.v1.EmbedRequest
+	(*EmbedResponse)(nil), // 3: runtime.v1.EmbedResponse
+	(*ParseRequest)(nil),  // 4: runtime.v1.ParseRequest
+	(*ParseResponse)(nil), // 5: runtime.v1.ParseResponse
+	(*DocChunk)(nil),      // 6: runtime.v1.DocChunk
 }
 var file_rag_service_proto_depIdxs = []int32{
-	6, // 0: rag.v1.ParseResponse.chunks:type_name -> rag.v1.DocChunk
-	0, // 1: rag.v1.LLMService.AskStream:input_type -> rag.v1.AskRequest
-	2, // 2: rag.v1.LLMService.EmbedData:input_type -> rag.v1.EmbedRequest
-	4, // 3: rag.v1.LLMService.ParseAndEmbed:input_type -> rag.v1.ParseRequest
-	1, // 4: rag.v1.LLMService.AskStream:output_type -> rag.v1.AskResponse
-	3, // 5: rag.v1.LLMService.EmbedData:output_type -> rag.v1.EmbedResponse
-	5, // 6: rag.v1.LLMService.ParseAndEmbed:output_type -> rag.v1.ParseResponse
+	6, // 0: runtime.v1.ParseResponse.chunks:type_name -> runtime.v1.DocChunk
+	0, // 1: runtime.v1.LLMService.AskStream:input_type -> runtime.v1.AskRequest
+	2, // 2: runtime.v1.LLMService.EmbedData:input_type -> runtime.v1.EmbedRequest
+	4, // 3: runtime.v1.LLMService.ParseAndEmbed:input_type -> runtime.v1.ParseRequest
+	1, // 4: runtime.v1.LLMService.AskStream:output_type -> runtime.v1.AskResponse
+	3, // 5: runtime.v1.LLMService.EmbedData:output_type -> runtime.v1.EmbedResponse
+	5, // 6: runtime.v1.LLMService.ParseAndEmbed:output_type -> runtime.v1.ParseResponse
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

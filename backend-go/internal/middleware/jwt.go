@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Chimera-RAG/backend-go/internal/utils"
+	"Chimera/backend-go/internal/utils"
 	"net/http"
 	"strings"
 

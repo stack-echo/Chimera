@@ -1,9 +1,9 @@
 package service
 
 import (
-	"Chimera-RAG/backend-go/internal/data"
-	"Chimera-RAG/backend-go/internal/dto"
-	"Chimera-RAG/backend-go/internal/model"
+	"Chimera/backend-go/internal/data"
+	"Chimera/backend-go/internal/dto"
+	"Chimera/backend-go/internal/model"
 	"context"
 	"errors"
 )
@@ -16,21 +16,25 @@ func NewKBService(data *data.Data) *KBService {
 	return &KBService{Data: data}
 }
 
-// CreateKnowledgeBase 创建知识库 (支持 个人/组织 双模式)
+// CreateKnowledgeBase 创建知识库
 func (s *KBService) CreateKnowledgeBase(ctx context.Context, userID uint, req dto.CreateKBReq) (*dto.KBResp, error) {
+	var orgIDPtr *uint
+	if req.OrgID > 0 {
+		val := req.OrgID
+		orgIDPtr = &val
+	}
+
+	// 1. 构造模型
 	kb := &model.KnowledgeBase{
 		Name:        req.Name,
 		Description: req.Description,
-		Type:        req.Type,
-		CreatorID:   userID, // 无论归属谁，创建者永远是你
-		IsPublic:    false,  // 默认为私有
+		CreatorID:   userID,
+		OrgID:       orgIDPtr, // 传入指针 (nil 或 &id)
 	}
 
-	// 🔥 核心分支逻辑
+	// 2. 权限/归属检查
 	if req.OrgID > 0 {
-		// --- 🅰️ 组织模式 ---
-
-		// 1. 安全检查：你必须是该组织的成员才能创建
+		// --- 组织模式 ---
 		var count int64
 		err := s.Data.DB.Model(&model.OrganizationMember{}).
 			Where("organization_id = ? AND user_id = ?", req.OrgID, userID).
@@ -41,14 +45,9 @@ func (s *KBService) CreateKnowledgeBase(ctx context.Context, userID uint, req dt
 		if count == 0 {
 			return nil, errors.New("权限不足：你不是该组织的成员")
 		}
-
-		// 2. 绑定组织 ID
-		orgID := req.OrgID
-		kb.OrgID = &orgID // 赋值指针
-
 	} else {
-		// --- 🅱️ 个人模式 ---
-		kb.OrgID = nil // 明确设为 nil
+		// --- 个人模式 ---
+		// 逻辑保持简单，OrgID=0 即为个人
 	}
 
 	// 3. 落库
@@ -61,57 +60,50 @@ func (s *KBService) CreateKnowledgeBase(ctx context.Context, userID uint, req dt
 		ID:          kb.ID,
 		Name:        kb.Name,
 		Description: kb.Description,
-		Type:        kb.Type,
+		Type:        "folder", // 暂时硬编码或从 req 获取（如果 DTO 还有的话）
 		CreatorID:   kb.CreatorID,
-		OrgID:       kb.OrgID,
+		OrgID:       orgIDPtr,
 		CreatedAt:   kb.CreatedAt,
 	}, nil
 }
 
-// ListKnowledgeBases 获取知识库列表 (根据 orgID 过滤)
+// ListKnowledgeBases 获取列表
 func (s *KBService) ListKnowledgeBases(ctx context.Context, userID uint, orgID uint) ([]dto.KBResp, error) {
 	var kbs []model.KnowledgeBase
-
 	db := s.Data.DB.Model(&model.KnowledgeBase{})
 
 	if orgID > 0 {
-		// --- 🅰️ 组织模式 ---
-		// 1. 安全检查：你必须是该组织成员才能查看该组织的知识库
+		// 查组织库
+		// 1. 检查成员资格
 		var isMember int64
 		s.Data.DB.Model(&model.OrganizationMember{}).
 			Where("organization_id = ? AND user_id = ?", orgID, userID).
 			Count(&isMember)
-
 		if isMember == 0 {
-			return nil, errors.New("权限不足：你不是该组织的成员")
+			return nil, errors.New("权限不足")
 		}
-
-		// 2. 查询条件：该组织下的所有 KB
+		// 2. 过滤
 		db = db.Where("org_id = ?", orgID)
 	} else {
-		// --- 🅱️ 个人模式 ---
-		// 查询条件：我自己创建的，且不属于任何组织的
+		// 查个人库 (OrgID is NULL)
 		db = db.Where("creator_id = ? AND org_id IS NULL", userID)
 	}
 
-	// 执行查询 (按创建时间倒序)
 	if err := db.Order("created_at desc").Find(&kbs).Error; err != nil {
 		return nil, err
 	}
 
-	// 转换为 DTO
 	var result []dto.KBResp
 	for _, k := range kbs {
 		result = append(result, dto.KBResp{
 			ID:          k.ID,
 			Name:        k.Name,
 			Description: k.Description,
-			Type:        k.Type,
+			Type:        "folder",
 			CreatorID:   k.CreatorID,
 			OrgID:       k.OrgID,
 			CreatedAt:   k.CreatedAt,
 		})
 	}
-
 	return result, nil
 }

@@ -26,7 +26,7 @@ func GenerateToken(userID uint, username, role string) (string, error) {
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
-			Issuer:    "chimera-rag",
+			Issuer:    "Chimera",
 		},
 	}
 

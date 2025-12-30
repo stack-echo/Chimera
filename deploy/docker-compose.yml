@@ -111,6 +111,11 @@ services:
     networks:
       - chimera_net
 
+  signoz:
+    image: signoz/signoz-otel-collector:latest
+    ports:
+      - "4317:4317" # OTLP gRPC 接收端口
+
 networks:
   chimera_net:
     driver: bridge

@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	pb "Chimera-RAG/api/rag/v1"
+	pb "Chimera/api/runtime/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

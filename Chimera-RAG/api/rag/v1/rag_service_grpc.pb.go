@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v3.20.3
-// source: rag.proto
+// source: runtime.proto
 
 package v1
 
@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LLMService_AskStream_FullMethodName     = "/rag.v1.LLMService/AskStream"
-	LLMService_EmbedData_FullMethodName     = "/rag.v1.LLMService/EmbedData"
-	LLMService_ParseAndEmbed_FullMethodName = "/rag.v1.LLMService/ParseAndEmbed"
+	LLMService_AskStream_FullMethodName     = "/runtime.v1.LLMService/AskStream"
+	LLMService_EmbedData_FullMethodName     = "/runtime.v1.LLMService/EmbedData"
+	LLMService_ParseAndEmbed_FullMethodName = "/runtime.v1.LLMService/ParseAndEmbed"
 )
 
 // LLMServiceClient is the client API for LLMService service.
@@ -180,7 +180,7 @@ func _LLMService_ParseAndEmbed_Handler(srv interface{}, ctx context.Context, dec
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var LLMService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "rag.v1.LLMService",
+	ServiceName: "runtime.v1.LLMService",
 	HandlerType: (*LLMServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -199,5 +199,5 @@ var LLMService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "rag.proto",
+	Metadata: "runtime.proto",
 }

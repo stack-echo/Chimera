@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"Chimera-RAG/backend-go/internal/model"
+	"Chimera/backend-go/internal/model"
 	"gorm.io/gorm"
 )
 

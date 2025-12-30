@@ -7,8 +7,8 @@ import (
 	"net"
 	"strconv"
 
-	"Chimera-RAG/backend-go/internal/conf"
-	"Chimera-RAG/backend-go/internal/model"
+	"Chimera/backend-go/internal/conf"
+	"Chimera/backend-go/internal/model"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -35,6 +35,29 @@ type SearchResult struct {
 }
 
 func NewData(cfg *conf.Config) (*Data, func(), error) {
+	// 1. 连接 Postgres
+	dsn := cfg.Data.DatabaseSource
+	pgDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open database: %v", err)
+	}
+
+	// 🔥🔥🔥 核心：在此处执行自动迁移 🔥🔥🔥
+	// 将所有新定义的 struct 都放进来，GORM 会自动建表或修改字段
+	if err := pgDB.AutoMigrate(
+		&model.User{},
+		&model.Organization{},
+		&model.OrganizationMember{}, // 权限表
+		&model.KnowledgeBase{},      // 知识库容器
+		&model.DataSource{},         // 数据源 (替代原来的 Document)
+		&model.Application{},        // 智能体应用
+		&model.AppRunLog{},          // 监控日志
+	); err != nil {
+		return nil, nil, fmt.Errorf("schema migration failed: %v", err)
+	}
+
+	fmt.Println("✅ 数据库表结构迁移完成")
+
 	// -------------------------------------------------------
 	// 1. 初始化 Redis
 	// -------------------------------------------------------
@@ -94,14 +117,6 @@ func NewData(cfg *conf.Config) (*Data, func(), error) {
 
 	// 验证连接并创建集合
 	createCollection(qdrantClient)
-
-	// -------------------------------------------------------
-	// 4. 初始化 Postgres
-	// -------------------------------------------------------
-	pgDB, err := NewPostgresDB(cfg)
-	if err != nil {
-		log.Fatalf("❌ 无法初始化 Postgres 客户端: %v", err)
-	}
 
 	d := &Data{
 		Minio:  minioClient,
@@ -232,7 +247,7 @@ func NewPostgresDB(cfg *conf.Config) (*gorm.DB, error) {
 		&model.Organization{},
 		&model.OrganizationMember{},
 		&model.KnowledgeBase{},
-		&model.Document{},
+		&model.DataSource{},
 	); err != nil {
 		return nil, fmt.Errorf("database migration failed: %v", err)
 	}

@@ -1,20 +1,21 @@
 package main
 
 import (
-	"Chimera-RAG/backend-go/internal/middleware"
-	"Chimera-RAG/backend-go/internal/repository"
+	"Chimera/backend-go/internal/middleware"
+	"Chimera/backend-go/internal/repository"
 	"log"
+	"time"
 
-	"github.com/gin-contrib/cors" // 需执行 go get github.com/gin-contrib/cors
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "Chimera-RAG/backend-go/api/rag/v1"
-	"Chimera-RAG/backend-go/internal/conf"
-	"Chimera-RAG/backend-go/internal/data"
-	"Chimera-RAG/backend-go/internal/handler"
-	"Chimera-RAG/backend-go/internal/service"
+	pb "Chimera/backend-go/api/runtime/v1"
+	"Chimera/backend-go/internal/conf"
+	"Chimera/backend-go/internal/data"
+	"Chimera/backend-go/internal/handler"
+	"Chimera/backend-go/internal/service"
 )
 
 func main() {
@@ -47,19 +48,18 @@ func main() {
 	userRepo := repository.NewUserRepository(d.DB)
 
 	// 4. 初始化服务层与 Worker
-	grpcClient := pb.NewRagServiceClient(conn)
-	ragService := service.NewRagService(grpcClient, d)
+	grpcClient := pb.NewRuntimeServiceClient(conn)
+	RuntimeService := service.NewRuntimeService(grpcClient, d)
 	orgService := service.NewOrgService(d)
 	kbService := service.NewKBService(d)
-	fileService := service.NewFileService(d)
 	authService := service.NewAuthService(userRepo)
 
 	// 5. 初始化 Handler (控制器)
 	orgHandler := handler.NewOrgHandler(orgService)
 	kbHandler := handler.NewKBHandler(kbService)
-	fileHandler := handler.NewFileHandler(fileService)
+	fileHandler := handler.NewFileHandler(RuntimeService)
 	authHandler := handler.NewAuthHandler(authService)
-	chatHandler := handler.NewChatHandler(ragService)
+	chatHandler := handler.NewChatHandler(RuntimeService)
 
 	// 6. 初始化 Gin Web Server
 	r := gin.Default()
@@ -68,9 +68,10 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"}, // 开发环境允许所有，生产环境建议指定前端域名
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	}))
 
 	// 7. 注册路由
@@ -101,7 +102,7 @@ func main() {
 		protected.GET("/file/:filename", chatHandler.HandleGetFile)
 	}
 
-	log.Println("🚀 Chimera-RAG 后端已启动，监听端口 :8080")
+	log.Println("🚀 Chimera 后端已启动，监听端口 :8080")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("❌ Server 启动失败: %v", err)
 	}

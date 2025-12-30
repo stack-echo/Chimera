@@ -1,10 +1,10 @@
 package service
 
 import (
-	"Chimera-RAG/backend-go/internal/dto"
-	"Chimera-RAG/backend-go/internal/model"
-	"Chimera-RAG/backend-go/internal/repository"
-	"Chimera-RAG/backend-go/internal/utils" // 引用你写的 utils
+	"Chimera/backend-go/internal/dto"
+	"Chimera/backend-go/internal/model"
+	"Chimera/backend-go/internal/repository"
+	"Chimera/backend-go/internal/utils" // 引用你写的 utils
 	"errors"
 )
 

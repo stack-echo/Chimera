@@ -105,7 +105,7 @@
             {{ loading ? '...' : '发送' }}
           </button>
         </div>
-        <div class="footer-note">Chimera-RAG 生成的内容可能包含幻觉，请以原文为准。</div>
+        <div class="footer-note">Chimera 生成的内容可能包含幻觉，请以原文为准。</div>
       </div>
     </div>
   </div>

@@ -1,9 +1,9 @@
 package service
 
 import (
-	"Chimera-RAG/backend-go/internal/data"
-	"Chimera-RAG/backend-go/internal/dto"
-	"Chimera-RAG/backend-go/internal/model"
+	"Chimera/backend-go/internal/data"
+	"Chimera/backend-go/internal/dto"
+	"Chimera/backend-go/internal/model"
 	"context"
 	"errors"
 	"gorm.io/gorm"

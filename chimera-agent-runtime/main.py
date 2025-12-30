@@ -1,39 +1,68 @@
 import logging
-import sys
-import os
-from concurrent import futures
 import grpc
+import os
+import sys
+from concurrent import futures
 from config import Config
 
-# 1. 确保能找到 rpc 包 (防止 ModuleNotFoundError)
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# OpenTelemetry
+from opentelemetry.instrumentation.grpc import GrpcInstrumentorServer
+from core.telemetry.tracing import setup_otel
 
-# 2. 引入新生成的 rpc 代码
-from rpc import rag_pb2_grpc
+# Stores
+from core.stores.graph_store import NebulaStore
+from core.stores.qdrant_store import QdrantStore # 🔥 新增
 
-# 3. 引入你的业务服务 (稍后我们需要去修改这个文件)
-from service.rag_service import ChimeraLLMService
+# Service
+from service.runtime_service import ChimeraRuntimeService # 🔥 替换原有的 RagService
+
+# Generated RPC
+rpc_path = os.path.join(os.path.dirname(__file__), 'rpc')
+if rpc_path not in sys.path:
+    sys.path.insert(0, rpc_path)
+from rpc import runtime_pb2_grpc # 注意这里变成了 runtime_pb2_grpc
 
 def serve():
-    # 增加 max_workers 以支持并发的 ETL 任务
+    # 1. 初始化日志
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    # 2. 初始化 OTel
+    setup_otel(service_name=Config.SERVICE_NAME, endpoint=Config.OTEL_ENDPOINT)
+
+    # 3. 初始化存储层 (单例模式)
+    logger = logging.getLogger(__name__)
+    logger.info("📦 Initializing Storage Engines...")
+
+    nebula_store = NebulaStore(Config)
+    qdrant_store = QdrantStore() # 内部会自动连接并建表
+
+    # 4. 初始化 gRPC Server
+    instrumentor = GrpcInstrumentorServer()
+    if not instrumentor.is_instrumented_by_opentelemetry:
+        instrumentor.instrument()
+
     server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=Config.MAX_WORKERS if hasattr(Config, 'MAX_WORKERS') else 10),
+        futures.ThreadPoolExecutor(max_workers=getattr(Config, 'MAX_WORKERS', 10)),
         options=[
             ('grpc.max_send_message_length', Config.MAX_MESSAGE_LENGTH),
             ('grpc.max_receive_message_length', Config.MAX_MESSAGE_LENGTH),
         ]
     )
 
-    # 🔥 核心修改：注册 RagService (以前是 LLMService)
-    # 注意：这里调用的是新生成的 add_RagServiceServicer_to_server
-    rag_pb2_grpc.add_RagServiceServicer_to_server(ChimeraLLMService(), server)
+    # 5. 注册服务 (注入依赖)
+    runtime_pb2_grpc.add_RuntimeServiceServicer_to_server(
+        ChimeraRuntimeService(nebula_store, qdrant_store),
+        server
+    )
 
-    # 监听端口
+    # 6. 启动
     server.add_insecure_port(f'[::]:{Config.PORT}')
-    logging.info(f"🚀 Chimera Brain v0.4.0 (SaaS Edition) running on port {Config.PORT}...")
+    logger.info(f"🧠 Chimera Runtime v0.5.0 (Platform Edition) running on port {Config.PORT}...")
     server.start()
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     serve()

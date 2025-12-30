@@ -11,9 +11,12 @@ from docling.datamodel.document import DocumentStream
 # 🔥 关键：HybridChunker 在 docling.chunking 下
 from docling.chunking import HybridChunker
 
-class PDFParser:
+class DoclingParser:
     _converter = None
     _chunker = None
+    def __init__(self):
+        # 预加载模型，避免在请求中初始化
+        self.converter = DocumentConverter()
 
     @classmethod
     def _get_components(cls):
@@ -49,7 +52,7 @@ class PDFParser:
         解析 PDF 并返回带有【真实页码】的语义切片
         :param file_source: 可以是 str (路径), Path (路径), 或 bytes (二进制)
         """
-        converter, chunker = PDFParser._get_components()
+        converter, chunker = DoclingParser._get_components()
         logging.info(f"📄 [Docling] 开始解析: {filename}")
 
         try:
