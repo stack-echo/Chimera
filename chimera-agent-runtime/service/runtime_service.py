@@ -13,8 +13,7 @@ from core.stores.qdrant_store import QdrantStore
 from core.stores.graph_store import NebulaStore
 from core.llm.embedding import EmbeddingModel
 from core.connectors.file import FileConnector
-# 假设后续会有 FeishuConnector
-# from core.connectors.feishu import FeishuConnector
+from core.connectors.feishu import FeishuConnector
 
 # 工作流 (稍后我们需要调整它以适应新架构)
 from workflows.chat_flow import ChatWorkflow
@@ -52,8 +51,8 @@ class ChimeraRuntimeService(runtime_pb2_grpc.RuntimeServiceServicer):
                 # file_path 通常是 minio 的路径或本地临时路径
                 connector = FileConnector(request.kb_id, request.datasource_id, config)
             elif request.type == "feishu":
-                # connector = FeishuConnector(request.kb_id, request.datasource_id, config)
-                raise NotImplementedError("飞书连接器开发中")
+                # 🔥 启用飞书连接器
+                connector = FeishuConnector(request.kb_id, request.datasource_id, config)
             else:
                 return runtime_pb2.SyncResponse(success=False, error_msg=f"未知的类型: {request.type}")
 

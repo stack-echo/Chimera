@@ -62,6 +62,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authService)
 	chatHandler := handler.NewChatHandler(RuntimeService)
 	logHandler := handler.NewLogHandler(logService)
+	dsHandler := handler.NewDataSourceHandler(RuntimeService)
 
 	// 6. 初始化 Gin Web Server
 	r := gin.Default()
@@ -103,6 +104,8 @@ func main() {
 			// 监控相关路由
 			protected.GET("/logs", logHandler.List)
 			protected.GET("/stats", logHandler.Stats)
+			// 飞书数据源
+			protected.POST("/datasources", dsHandler.Create)
 		}
 		protected.GET("/file/:filename", chatHandler.HandleGetFile)
 	}
