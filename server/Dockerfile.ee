@@ -1,0 +1,19 @@
+# server/Dockerfile.ee (Enterprise)
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+ENV GOPROXY=https://goproxy.cn,direct
+RUN go mod download
+
+COPY . .
+# 🔥 编译企业版入口 (server-ee)
+RUN go build -o server-ee cmd/server-ee/main.go
+
+FROM alpine:latest
+WORKDIR /app
+RUN apk --no-cache add ca-certificates tzdata
+COPY --from=builder /app/server-ee .
+EXPOSE 8080
+# 启动企业版二进制
+CMD ["./server-ee"]

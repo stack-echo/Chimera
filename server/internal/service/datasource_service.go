@@ -1,0 +1,195 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"mime/multipart"
+	"path/filepath"
+	"strings"
+	"time"
+
+	pb "Chimera/server/api/runtime/v1"
+	"Chimera/server/internal/core"
+	"Chimera/server/internal/data"
+	"Chimera/server/internal/dto"
+	"Chimera/server/internal/model"
+
+	"github.com/minio/minio-go/v7"
+	"gorm.io/datatypes"
+)
+
+type DataSourceService struct {
+	Data    *data.Data
+	Adapter *RuntimeAdapter
+}
+
+func NewDataSourceService(data *data.Data, adapter *RuntimeAdapter) *DataSourceService {
+	return &DataSourceService{
+		Data:    data,
+		Adapter: adapter,
+	}
+}
+
+// CreateDataSource 通用创建接口 (API/SaaS源)
+func (s *DataSourceService) CreateDataSource(ctx context.Context, userID uint, req dto.CreateDataSourceReq) (*model.DataSource, error) {
+	// 1. 鉴权
+	if err := s.checkKbPermission(req.KbID, userID); err != nil {
+		return nil, err
+	}
+
+	// 2. 校验配置 (企业版注入点)
+	if err := core.GlobalRegistry.Validate(req.Type, req.Config); err != nil {
+		return nil, fmt.Errorf("配置校验失败: %v", err)
+	}
+
+	// 3. 序列化
+	configBytes, err := json.Marshal(req.Config)
+	if err != nil {
+		return nil, errors.New("配置格式错误")
+	}
+
+	// 4. 落库
+	ds := &model.DataSource{
+		KnowledgeBaseID: req.KbID,
+		Type:            req.Type,
+		Name:            req.Name,
+		Config:          datatypes.JSON(configBytes),
+		Status:          "pending",
+	}
+	if err := s.Data.DB.WithContext(ctx).Create(ds).Error; err != nil {
+		return nil, err
+	}
+
+	// 5. 触发 ETL
+	s.triggerAsyncETL(ds.ID, req.KbID, req.Type, configBytes)
+
+	return ds, nil
+}
+
+// UploadFile 上传文件接口 (文件源)
+func (s *DataSourceService) UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, userID uint, kbID uint) (*model.DataSource, error) {
+	// 1. 鉴权
+	if err := s.checkKbPermission(kbID, userID); err != nil {
+		return nil, err
+	}
+
+	// 2. MinIO 上传
+	src, err := fileHeader.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer src.Close()
+
+	storagePath, err := s.Data.UploadFile(ctx, src, fileHeader.Size, fileHeader.Filename)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. 构造配置
+	configMap := map[string]interface{}{
+		"storage_path": storagePath,
+		"file_size":    fileHeader.Size,
+		"file_ext":     strings.ToLower(filepath.Ext(fileHeader.Filename)),
+		"file_name":    fileHeader.Filename,
+	}
+	configBytes, _ := json.Marshal(configMap)
+
+	// 4. 落库
+	ds := &model.DataSource{
+		KnowledgeBaseID: kbID,
+		Type:            "file",
+		Name:            fileHeader.Filename,
+		Config:          datatypes.JSON(configBytes),
+		Status:          "pending",
+	}
+	if err := s.Data.DB.WithContext(ctx).Create(ds).Error; err != nil {
+		return nil, err
+	}
+
+	// 5. 触发 ETL
+	s.triggerAsyncETL(ds.ID, kbID, "file", configBytes)
+
+	return ds, nil
+}
+
+// GetFile 获取文件流 (用于预览/下载)
+func (s *DataSourceService) GetFile(ctx context.Context, fileName string) (*minio.Object, int64, error) {
+	// 桶名硬编码或从配置读取
+	bucketName := "chimera-docs"
+	return s.Data.GetFileStream(ctx, bucketName, fileName)
+}
+
+// --- 私有辅助方法 ---
+
+// checkKbPermission 鉴权
+func (s *DataSourceService) checkKbPermission(kbID uint, userID uint) error {
+	var kb model.KnowledgeBase
+	if err := s.Data.DB.First(&kb, kbID).Error; err != nil {
+		return errors.New("知识库不存在")
+	}
+	// 组织库鉴权
+	if kb.OrgID != nil {
+		var count int64
+		s.Data.DB.Model(&model.OrganizationMember{}).
+			Where("organization_id = ? AND user_id = ?", *kb.OrgID, userID).
+			Count(&count)
+		if count == 0 {
+			return errors.New("权限不足：你不是该组织成员")
+		}
+		return nil
+	}
+	// 个人库鉴权
+	if kb.CreatorID != userID {
+		return errors.New("权限不足")
+	}
+	return nil
+}
+
+// triggerAsyncETL 异步触发
+func (s *DataSourceService) triggerAsyncETL(dsID uint, kbID uint, sourceType string, configBytes []byte) {
+	go func() {
+		// 30分钟超时
+		bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		defer cancel()
+
+		s.updateDataSourceStatus(dsID, "syncing", "", 0, 0)
+
+		// 调用 Adapter (gRPC)
+		resp, err := s.Adapter.SyncDataSource(bgCtx, &pb.SyncRequest{
+			KbId:         int64(kbID),
+			DatasourceId: int64(dsID),
+			Type:         sourceType,
+			ConfigJson:   string(configBytes),
+		})
+
+		if err != nil {
+			s.updateDataSourceStatus(dsID, "failed", fmt.Sprintf("RPC Error: %v", err), 0, 0)
+			return
+		}
+
+		if !resp.Success {
+			s.updateDataSourceStatus(dsID, "failed", resp.ErrorMsg, 0, 0)
+			return
+		}
+
+		s.updateDataSourceStatus(dsID, "active", "", int(resp.ChunksCount), int(resp.PageCount))
+	}()
+}
+
+// updateDataSourceStatus 更新状态
+func (s *DataSourceService) updateDataSourceStatus(id uint, status string, errMsg string, chunks, pages int) {
+	updates := map[string]interface{}{
+		"status":         status,
+		"error_msg":      errMsg,
+		"last_sync_time": time.Now(),
+	}
+	if chunks > 0 {
+		updates["chunk_count"] = chunks
+	}
+	if pages > 0 {
+		updates["page_count"] = pages
+	}
+	s.Data.DB.Model(&model.DataSource{}).Where("id = ?", id).Updates(updates)
+}

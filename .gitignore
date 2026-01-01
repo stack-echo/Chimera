@@ -5,8 +5,8 @@
 *.swp
 
 # --- Golang ---
-/backend-go/bin/
-/backend-go/vendor/
+/server/bin/
+/server/vendor/
 go.sum
 
 # --- Python ---
@@ -24,3 +24,25 @@ venv/
 # 忽略环境变量文件
 .env
 *.pem
+
+# --- Enterprise Edition (Closed Source) ---
+# 忽略 Go 的企业级代码
+server/enterprise/
+server/cmd/server-ee/
+
+# 忽略 Python 的企业级代码 (保留目录结构以便 import，但忽略内容)
+runtime/enterprise/core/connectors/*
+!runtime/enterprise/core/connectors/__init__.py
+runtime/enterprise/core/stores/*
+!runtime/enterprise/core/stores/__init__.py
+runtime/enterprise/workflows/*
+!runtime/enterprise/workflows/__init__.py
+
+# 如果你希望彻底忽略整个目录，也可以直接写：
+# runtime/enterprise/
+# server/enterprise/
+# 但上面的写法保留了 __init__.py，能防止 Python 报错 "Module not found"
+
+# 忽略 Dockerfile 的企业版构建脚本
+Dockerfile.enterprise
+docker-compose-ee.yml

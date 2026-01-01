@@ -1,0 +1,20 @@
+# runtime/Dockerfile.ee (Enterprise)
+# 基于开源版镜像构建 (假设开源版 tag 为 chimera-runtime:core)
+# 如果是在 CI/CD 中，可以直接基于 python:3.10-slim 重新构建，这里为了演示分层
+FROM python:3.10-slim
+
+WORKDIR /app
+# ... (重复安装依赖步骤，或者直接 COPY 之前的) ...
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 1. 先复制 Core
+COPY . .
+
+# 2. 🔥 显式复制 Enterprise 目录 (覆盖 .dockerignore 的规则)
+# 注意：Docker build context 需要包含 enterprise 目录
+COPY enterprise ./enterprise
+
+ENV PYTHONPATH=/app
+EXPOSE 50051
+CMD ["python", "main.py"]

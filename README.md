@@ -1,9 +1,9 @@
-# 🦄 Chimera (v0.5.0)
+# 🦄 Chimera (v0.5.1)
 
 > **The Observable AI Agent Platform.**  
 > **面向企业的可观测多智能体 PaaS 平台。**
 
-Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 双核架构的企业级 AI 基础设施。它不仅仅是一个 RAG 系统，更是一个通用的智能体运行时环境。它解耦了“业务应用”与“底层知识”，并提供了从网关到 LLM 推理的**全链路可观测性 (Observability)**。
+Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 双核架构的企业级 AI 基础设施。它不仅仅是一个 RAG 系统，更是一个通用的智能体运行时环境。它解耦了“业务应用”与“底层知识”，并提供了从网关到 LLM 推理的全链路可观测性 (Observability)。
 
 ## ✨ v0.5.0 核心特性：平台化元年
 
@@ -24,15 +24,22 @@ Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 
 
 ## 🛠️ 技术栈
 
-### 控制面 (Backend-Go)
+### 控制面 (Server)
+- **路径**: `/server`
 - **框架**: Gin, gRPC
 - **存储**: PostgreSQL (元数据/审计日志), Redis (缓存/会话)
 - **中间件**: JWT 鉴权, OpenTelemetry SDK
 
-### 运行时 (Agent-Runtime)
+### 运行时 (Runtime)
+- **路径**: `/runtime`
 - **核心**: Python 3.11, LangGraph, gRPC Server
 - **AI 能力**: Docling (文档解析), OpenAI SDK / DeepSeek (推理), Sentence-Transformers (向量化)
 - **知识存储**: Qdrant (向量), NebulaGraph (图谱 - 预览中), MinIO (对象存储)
+
+### 前端 (Web)
+- **路径**: `/web`
+- **框架**: Vue 3 + Vite
+- **UI**: Arco Design + ECharts
 
 ## 🚀 快速开始
 
@@ -40,13 +47,19 @@ Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 
 ```bash
 cd deploy
 docker-compose up -d
-# 启动: PostgreSQL, Redis, MinIO, Qdrant, SigNoz
+# 启动: PostgreSQL, Redis, MinIO, Qdrant, SigNoz, Server, Runtime, Web
 ```
 
-### 2. 启动 Python 运行时
+> **注意**: 首次启动可能需要几分钟下载模型权重。
+
+### 2. 本地开发指南
+
+如果你需要修改代码，可以单独启动各个模块：
+
+**启动 Python 运行时:**
 ```bash
-cd chimera-agents-runtime
-# 1. 安装依赖 (推荐使用 venv)
+cd runtime
+# 1. 安装依赖
 pip install -r requirements.txt
 
 # 2. 配置环境变量
@@ -58,9 +71,9 @@ python main.py
 # 🚀 Runtime running on :50051
 ```
 
-### 3. 启动 Go 控制面
+**启动 Go 控制面:**
 ```bash
-cd backend-go
+cd server
 # 1. 安装依赖
 go mod download
 
@@ -69,23 +82,29 @@ go run cmd/server/main.go
 # 🚀 Server running on :8080
 ```
 
-### 4. 启动前端
+**启动前端:**
 ```bash
-cd frontend-vue
+cd web
 npm install && npm run dev
-# 访问: http://localhost:5173
+# 访问: http://localhost:3000
 ```
 
 ## 📈 版本演进
 
 | 版本 | 核心里程碑 | 状态 |
 | :--- | :--- | :--- |
-| **v0.1.0** | 基础 RAG 链路，支持 PDF 上传与问答 | ✅ |
-| **v0.2.0** | 用户认证系统 (JWT) 与代码重构 | ✅ |
-| **v0.3.0** | 文档视觉理解 (Docling) + 可验证问答 | ✅ |
 | **v0.4.0** | 多租户与隔离架构 | ✅ |
 | **v0.5.0** | **平台化重构 (Current)** <br> - 引入 `Application` 与 `DataSource` 概念 <br> - 实现 Go/Python 业务数据闭环 <br> - 落地 Qdrant 多租户检索 | 🎉 |
-| **v0.6.0** | **可视与连接 (Coming Soon)** <br> - 监控中台 Dashboard (Token/耗时统计) <br> - 飞书/钉钉连接器 <br> - GraphRAG 实装 | 🚧 |
+| **v0.5.1** | **监控中台前端** <br> - 接入 ECharts 可视化报表 <br> - 实现对话详情回溯 | ✅ |
+| **v0.6.0** | **连接与图谱 (Coming Soon)** <br> - 飞书/钉钉连接器 <br> - GraphRAG 实装 (NebulaGraph) | 🚧 |
+
+## 📄 开源协议 (License)
+
+本项目采用 **GNU Affero General Public License v3.0 (AGPL v3)** 协议开源。
+
+*   **允许**: 免费使用、修改、学习。
+*   **必须**: 如果您基于本项目通过网络提供服务（SaaS），必须开源您的修改代码。
+*   **商业授权**: 如需闭源商业使用，请联系作者获取授权。
 
 ## 🤝 贡献
 欢迎提交 Issue 和 PR！让我们一起构建下一代 AI 基础设施。

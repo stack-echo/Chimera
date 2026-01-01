@@ -42,7 +42,7 @@
 
 参考 **ProPEX-RAG** 和 **TAdaRAG (Stage 1)**，我们不使用传统的 BERT 模型做 NER，而是利用 **LLM (DeepSeek) + Prompt** 进行高质量抽取。
 
-这部分逻辑将在 `chimera-agent-runtime` 中实现一个新的 LangGraph 工作流：`KGBuildWorkflow`。
+这部分逻辑将在 `runtime` 中实现一个新的 LangGraph 工作流：`KGBuildWorkflow`。
 
 ### 流程步骤：
 1.  **Chunking (现有)**: Docling 解析 PDF 得到文本块。

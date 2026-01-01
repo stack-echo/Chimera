@@ -1,17 +1,88 @@
 version: '3.8'
 
 services:
-  # ----------------------------------------------------------------
-  # 1. 核心关系型数据库 (PostgreSQL) - 替代 MySQL
-  # ----------------------------------------------------------------
+  # =========================================
+  # 🟢 业务应用层 (OSS Core)
+  # =========================================
+
+  server:
+    container_name: chimera_server_core
+    build:
+      context: ../server
+      dockerfile: Dockerfile # 使用开源版构建
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # 适配 Go conf 读取逻辑
+      - DB_HOST=postgres
+      - DB_USER=chimera_user
+      - DB_PASSWORD=chimera_secret
+      - DB_NAME=chimera_main
+      - REDIS_HOST=redis
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=chimera_minio
+      - MINIO_SECRET_KEY=chimera_minio_secret
+      - AI_GRPC_HOST=runtime:50051
+      - OTEL_ENDPOINT=signoz:4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    networks:
+      - chimera_net
+
+  runtime:
+    container_name: chimera_runtime_core
+    build:
+      context: ../runtime
+      dockerfile: Dockerfile # 使用开源版构建 (.dockerignore 排除 enterprise)
+    restart: always
+    ports:
+      - "50051:50051"
+    environment:
+      - PORT=50051
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=chimera_minio
+      - MINIO_SECRET_KEY=chimera_minio_secret
+      - OTEL_ENDPOINT=signoz:4317
+      # 🔥 关键：不注入 NEBULA_HOST，触发代码降级为纯向量模式
+      # - NEBULA_HOST=...
+    volumes:
+      - ../runtime/prompts:/app/prompts
+    networks:
+      - chimera_net
+
+  web:
+    container_name: chimera_web
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    networks:
+      - chimera_net
+
+  # =========================================
+  # 🔵 基础设施层 (Infrastructure Layer)
+  # =========================================
+
   postgres:
     image: postgres:15-alpine
     container_name: chimera_postgres
     restart: always
     environment:
-      POSTGRES_USER: chimera_user      # 统一用户名
-      POSTGRES_PASSWORD: chimera_secret # 统一密码
-      POSTGRES_DB: chimera_main        # 统一库名
+      POSTGRES_USER: chimera_user
+      POSTGRES_PASSWORD: chimera_secret
+      POSTGRES_DB: chimera_main
     ports:
       - "5432:5432"
     volumes:
@@ -24,32 +95,25 @@ services:
       timeout: 5s
       retries: 5
 
-  # ----------------------------------------------------------------
-  # 2. 缓存与消息队列 (Redis)
-  # ----------------------------------------------------------------
   redis:
     image: redis:alpine
     container_name: chimera_redis
     restart: always
     ports:
       - "6379:6379"
-    # 开启持久化并设置密码
     command: redis-server --appendonly yes --requirepass chimera_secret
     volumes:
       - ./local_data/redis:/data
     networks:
       - chimera_net
 
-  # ----------------------------------------------------------------
-  # 3. 对象存储 (MinIO) - 存放 PDF/图片
-  # ----------------------------------------------------------------
   minio:
     image: minio/minio
     container_name: chimera_minio
     restart: always
     ports:
-      - "9000:9000" # API 端口
-      - "9001:9001" # Console 端口
+      - "9000:9000"
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: chimera_minio
       MINIO_ROOT_PASSWORD: chimera_minio_secret
@@ -59,62 +123,25 @@ services:
     networks:
       - chimera_net
 
-  # ----------------------------------------------------------------
-  # 4. 向量数据库 (Qdrant) - 存放 Embedding
-  # ----------------------------------------------------------------
   qdrant:
     image: qdrant/qdrant:latest
     container_name: chimera_qdrant
     restart: always
     ports:
-      - "6333:6333" # HTTP API
-      - "6334:6334" # gRPC API
+      - "6333:6333"
+      - "6334:6334"
     volumes:
       - ./local_data/qdrant:/qdrant/storage
     networks:
       - chimera_net
 
-  # ----------------------------------------------------------------
-  # 5. 图数据库 (NebulaGraph) - v0.5.0 预留
-  # ----------------------------------------------------------------
-  nebula-metad:
-    image: vesoft/nebula-metad:v3.6.0
-    container_name: chimera_nebula_metad
-    restart: on-failure
-    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_metad --ws_ip=chimera_nebula_metad --port=9559 --ws_http_port=19559 --data_path=/data/meta
-    volumes:
-      - ./local_data/nebula/meta:/data/meta
-    networks:
-      - chimera_net
-
-  nebula-storaged:
-    image: vesoft/nebula-storaged:v3.6.0
-    container_name: chimera_nebula_storaged
-    restart: on-failure
-    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_storaged --ws_ip=chimera_nebula_storaged --port=9779 --ws_http_port=19779 --data_path=/data/storage
-    depends_on:
-      - nebula-metad
-    volumes:
-      - ./local_data/nebula/storage:/data/storage
-    networks:
-      - chimera_net
-
-  nebula-graphd:
-    image: vesoft/nebula-graphd:v3.6.0
-    container_name: chimera_nebula_graphd
-    restart: on-failure
-    ports:
-      - "9669:9669"
-    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_graphd --ws_ip=chimera_nebula_graphd --port=9669 --ws_http_port=19669
-    depends_on:
-      - nebula-metad
-    networks:
-      - chimera_net
-
   signoz:
     image: signoz/signoz-otel-collector:latest
+    container_name: chimera_signoz
     ports:
-      - "4317:4317" # OTLP gRPC 接收端口
+      - "4317:4317"
+    networks:
+      - chimera_net
 
 networks:
   chimera_net:
