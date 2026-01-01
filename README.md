@@ -1,102 +1,133 @@
-# 🦄 Chimera (v0.5.1)
+# 🦄 Chimera (v0.6.0)
 
-> **The Observable AI Agent Platform.**  
+> **The Observable AI Agent Platform.**
 > **面向企业的可观测多智能体 PaaS 平台。**
 
-Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 双核架构的企业级 AI 基础设施。它不仅仅是一个 RAG 系统，更是一个通用的智能体运行时环境。它解耦了“业务应用”与“底层知识”，并提供了从网关到 LLM 推理的全链路可观测性 (Observability)。
+Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 双核架构的企业级 AI 基础设施。
 
-## ✨ v0.5.0 核心特性：平台化元年
+在 **v0.6.0** 中，我们完成了**Open Core（核心开源）** 架构重构，实现了核心能力与企业级特性的解耦。现在，Chimera 既是一个开箱即用的轻量级 RAG 系统，也是一个支持复杂业务扩展的 AI PaaS 平台。
 
-### 🔬 全链路可观测 (Observability Loop)
-- **白盒化推理**：不再是黑盒问答。系统实时追踪智能体的“思考过程 (Thought Chain)”。
-- **精准计量**：Python 运行时精确统计 Token 消耗与推理耗时，并通过 gRPC 回传给 Go 控制面进行持久化审计。
+## ✨ v0.6.0 新特性：架构破局
+
+### 🧬 Open Core 插件化架构
+- **核心解耦**：彻底剥离了业务逻辑与 AI 核心。Python 运行时引入 **工厂模式 (Factory)** 与 **动态加载器 (Loader)**，实现“一套代码，两种形态”。
+- **物理隔离**：企业级代码（如飞书集成、图谱构建）移入 `enterprise/` 目录，开源仓库保持纯净。
+- **Go 服务分层**：引入 `DataSourceService` 与 `ChatService`，配合 `Registry` 机制，实现无侵入式的功能注入。
+
+### 🔬 全链路可观测 (Observability)
+- **白盒化推理**：实时追踪智能体的“思考过程 (Thought Chain)”。
+- **精准计量**：Python 运行时精确统计 Token 消耗与推理耗时，通过 gRPC 回传进行持久化审计。
 - **分布式追踪**：集成 **OpenTelemetry (SigNoz)**，提供跨语言（Go -> Python）的函数级性能分析。
 
-### 🏗️ 双核分离架构 (Dual-Core Architecture)
-- **控制面 (Go)**：负责多租户鉴权、业务逻辑路由、日志归档与数据源管理。
-- **计算面 (Python)**：基于 **LangGraph** 的动态工作流引擎，无状态设计，支持高并发扩展。
-- **通用协议**：通过 `runtime.proto` 定义了标准化的 `RunAgent` 和 `SyncDataSource` 接口，支持任意 Agent 接入。
+### 🧠 混合增强检索 (Hybrid RAG)
+- **向量检索 (OSS)**：基于 **Qdrant** 的高性能向量搜索。
+- **图谱增强 (Enterprise)**：基于 **NebulaGraph** 的知识图谱构建与检索 (GraphRAG)，解决复杂推理问题。
 
-### 🔌 热插拔资源 (Hot-Pluggable Resources)
-- **ETL 流水线**：标准化的 `Connector` 接口。v0.5.0 内置 **Docling** 文件解析器，支持 PDF/Markdown 的视觉理解与语义切分。
-- **多租户隔离**：通过 `OrgID` 和 `KB_ID` 实现向量数据库 (Qdrant) 的逻辑隔离。
-- **数据源抽象**：从单一的“文件”升级为“数据源 (DataSource)”，为接入飞书、钉钉、网页爬虫做好准备。
+---
 
-## 🛠️ 技术栈
+## 🛠️ 功能矩阵
 
-### 控制面 (Server)
-- **路径**: `/server`
-- **框架**: Gin, gRPC
-- **存储**: PostgreSQL (元数据/审计日志), Redis (缓存/会话)
-- **中间件**: JWT 鉴权, OpenTelemetry SDK
+| 功能模块 | 🟢 开源社区版 (Community) | 🔵 企业商用版 (Enterprise) |
+| :--- | :--- | :--- |
+| **检索模型** | 向量检索 (Qdrant) | **GraphRAG (向量 + 图谱)** |
+| **数据源** | 本地文件 (PDF/Markdown) | **飞书 / 钉钉 / Web Crawler** |
+| **文档解析** | Docling (OCR/Layout) | Docling + **知识抽取 (NER/RE)** |
+| **部署架构** | 单机 Docker Compose | **高可用集群 / K8s** |
+| **构建体系** | 标准镜像 | **分层构建 (Core + Plugins)** |
 
-### 运行时 (Runtime)
-- **路径**: `/runtime`
-- **核心**: Python 3.11, LangGraph, gRPC Server
-- **AI 能力**: Docling (文档解析), OpenAI SDK / DeepSeek (推理), Sentence-Transformers (向量化)
-- **知识存储**: Qdrant (向量), NebulaGraph (图谱 - 预览中), MinIO (对象存储)
+---
 
-### 前端 (Web)
-- **路径**: `/web`
-- **框架**: Vue 3 + Vite
-- **UI**: Arco Design + ECharts
+## 🏗️ 目录结构
+
+```text
+Chimera/
+├── deploy/               # Docker 编排文件 (OSS & EE)
+├── server/               # [Go] 控制面
+│   ├── cmd/
+│   │   ├── server/       # 🟢 开源版入口
+│   │   └── server-ee/    # 🔵 企业版入口 (注入 Plugin)
+│   ├── internal/core/    #    接口定义与注册表
+│   └── enterprise/       # 🔒 闭源业务逻辑
+├── runtime/              # [Python] 计算面
+│   ├── core/
+│   │   ├── managers/     #    业务逻辑 (ETL, Inference)
+│   │   └── connectors/   #    基础连接器 (File)
+│   ├── enterprise/       # 🔒 闭源插件 (Feishu, Nebula, KG)
+│   └── loader.py         #    动态加载器
+└── web/                  # [Vue3] 前端
+```
+
+---
 
 ## 🚀 快速开始
 
-### 1. 启动基础设施
+### 1. 启动开源版 (Community Edition)
+
+适合个人开发者或小团队，轻量级，无需图数据库。
+
 ```bash
 cd deploy
+# 启动 Postgres, Redis, MinIO, Qdrant, SigNoz, Server, Runtime
 docker-compose up -d
-# 启动: PostgreSQL, Redis, MinIO, Qdrant, SigNoz, Server, Runtime, Web
 ```
 
-> **注意**: 首次启动可能需要几分钟下载模型权重。
+### 2. 启动企业版 (Enterprise Edition)
 
-### 2. 本地开发指南
+适合需要飞书集成或图谱增强的企业环境。（需拥有 `enterprise` 源码目录）
 
-如果你需要修改代码，可以单独启动各个模块：
+```bash
+cd deploy
+# 启动全量服务 (包含 NebulaGraph 集群)
+# 注意：会自动使用 Dockerfile.ee 构建包含 enterprise 代码的镜像
+docker-compose -f docker-compose-ee.yml up -d --build
+```
 
-**启动 Python 运行时:**
+---
+
+## 💻 本地开发指南
+
+如果你需要修改代码，请按照以下方式启动。
+
+### Python Runtime
+
 ```bash
 cd runtime
 # 1. 安装依赖
 pip install -r requirements.txt
 
-# 2. 配置环境变量
-cp .env.example .env
-# 务必填入 DEEPSEEK_API_KEY 和数据库配置
-
-# 3. 启动服务
+# 2. 启动服务
+# loader.py 会自动检测当前目录下是否有 'enterprise' 文件夹
+# 如果没有，自动降级为 Core 模式
 python main.py
-# 🚀 Runtime running on :50051
 ```
+> **提示**: 如果看到日志 `ℹ️ No enterprise directory found`，说明运行在开源模式。
 
-**启动 Go 控制面:**
+### Go Server
+
 ```bash
 cd server
 # 1. 安装依赖
 go mod download
 
-# 2. 启动服务 (自动执行数据库迁移)
+# 2. 启动开源版 (纯净模式)
 go run cmd/server/main.go
-# 🚀 Server running on :8080
-```
 
-**启动前端:**
-```bash
-cd web
-npm install && npm run dev
-# 访问: http://localhost:3000
+# 3. 启动企业版 (注入模式)
+# 前提：server/enterprise 目录存在
+go run cmd/server-ee/main.go
 ```
+> **提示**: 企业版启动时会打印 `🔓 [Enterprise] Loading Feishu Plugin...`。
+
+---
 
 ## 📈 版本演进
 
-| 版本 | 核心里程碑 | 状态 |
-| :--- | :--- | :--- |
-| **v0.4.0** | 多租户与隔离架构 | ✅ |
-| **v0.5.0** | **平台化重构 (Current)** <br> - 引入 `Application` 与 `DataSource` 概念 <br> - 实现 Go/Python 业务数据闭环 <br> - 落地 Qdrant 多租户检索 | 🎉 |
-| **v0.5.1** | **监控中台前端** <br> - 接入 ECharts 可视化报表 <br> - 实现对话详情回溯 | ✅ |
-| **v0.6.0** | **连接与图谱 (Coming Soon)** <br> - 飞书/钉钉连接器 <br> - GraphRAG 实装 (NebulaGraph) | 🚧 |
+| 版本 | 里程碑                                                                          | 状态 |
+| :--- |:-----------------------------------------------------------------------------| :--- |
+| **v0.4.0** | 多租户与隔离架构                                                                     | ✅ |
+| **v0.5.0** | 引入图谱双路召回与 SigNoz 监控                                                          | ✅ |
+| **v0.6.0** | **商业化架构重构 (Current)** <br> - Open Core 双核分离 <br> - 插件化连接器与存储 <br> - 物理隔离构建体系 | 🎉 |
+| **v0.7.0** | **记忆与权限 (Planning)** <br> - Redis Session 长期记忆 <br> - RBAC 权限体系              | 🚧 |
 
 ## 📄 开源协议 (License)
 
@@ -104,7 +135,13 @@ npm install && npm run dev
 
 *   **允许**: 免费使用、修改、学习。
 *   **必须**: 如果您基于本项目通过网络提供服务（SaaS），必须开源您的修改代码。
-*   **商业授权**: 如需闭源商业使用，请联系作者获取授权。
+*   **商业授权**: 如需闭源商业使用或获取企业版源码，请联系作者获取授权。
+
+---
 
 ## 🤝 贡献
-欢迎提交 Issue 和 PR！让我们一起构建下一代 AI 基础设施。
+
+欢迎提交 Issue 和 PR！对于新的数据源连接器，请遵循 `core/connectors/base.py` 中的接口规范。
+
+*   **核心功能**: 请提交至 `server/internal` 或 `runtime/core`。
+*   **新插件**: 建议先提交 Issue 讨论。
