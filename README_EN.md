@@ -7,8 +7,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/yourname/chimera)](https://goreportcard.com/report/github.com/yourname/chimera)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 
-[![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_ZH.md)
-[![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README_ZH.md)
+[![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_EN.md)
+[![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README.md)
 
 **Chimera** is a dual-core AI infrastructure built on **Go (Control Plane)** and **Python (Inference Runtime)**. It decouples business logic from AI capabilities, providing full-stack observability from the API gateway down to LLM inference.
 

@@ -3,8 +3,8 @@
 > **The Observable AI Agent Platform.**
 > **面向企业的可观测多智能体 PaaS 平台。**
 
-[![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_ZH.md)
-[![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README_ZH.md)
+[![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_EN.md)
+[![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README.md)
 
 
 Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 双核架构的企业级 AI 基础设施。
