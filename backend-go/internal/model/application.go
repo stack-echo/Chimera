@@ -15,7 +15,7 @@ type Application struct {
 	CreatorID uint  `gorm:"index;not null" json:"creator_id"`
 
 	// 🤖 智能体配置 (JSON)
-	// 包含: {"model": "deepseek-v3", "prompt": "你是一个...", "temperature": 0.7}
+	// 包含: {"model": "deepseek-v3", "prompts": "你是一个...", "temperature": 0.7}
 	AgentConfig datatypes.JSON `json:"agent_config"`
 
 	// 🔗 关联知识库 (多对多)

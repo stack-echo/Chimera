@@ -3,6 +3,7 @@ import logging
 import time
 import traceback
 from typing import Generator
+import uuid
 
 # gRPC 相关
 import grpc
@@ -17,7 +18,7 @@ from core.connectors.feishu import FeishuConnector
 
 # 工作流 (稍后我们需要调整它以适应新架构)
 from workflows.chat_flow import ChatWorkflow
-
+from workflows.kg_builder.graph import MultiAgentKGBuilder
 from opentelemetry import trace
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ class ChimeraRuntimeService(runtime_pb2_grpc.RuntimeServiceServicer):
         self.qdrant = qdrant_store
         # 初始化 Embedding 模型 (单例)
         self.embed_model = EmbeddingModel.get_instance()
+        self.kg_builder = MultiAgentKGBuilder(nebula_store) # 🔥 初始化
         logger.info("✅ RuntimeService initialized with Storage Engines")
 
     def SyncDataSource(self, request, context):
@@ -62,11 +64,15 @@ class ChimeraRuntimeService(runtime_pb2_grpc.RuntimeServiceServicer):
             # 2. 流式处理：读取 -> 向量化
             # connector.load() 是一个生成器，返回 DocumentChunk 对象
             for chunk in connector.load():
+                # 生成 UUID (确保 Qdrant 和 Nebula 用同一个 ID)
+                chunk_uuid = str(uuid.uuid4())
+
                 # 计算向量 (384维)
                 vector = self.embed_model.encode(chunk.content)
 
                 # 组装 Qdrant 需要的数据结构
                 chunks_buffer.append({
+                    "id": chunk_uuid,
                     "vector": vector,
                     "payload": {
                         "content": chunk.content,
@@ -75,6 +81,17 @@ class ChimeraRuntimeService(runtime_pb2_grpc.RuntimeServiceServicer):
                         **chunk.metadata # 合并其他元数据 (如 page_num)
                     }
                 })
+
+                # 触发图谱构建 (KG Builder)
+                # 注意：这是比较耗时的操作 (3次 LLM 调用)
+                # 为了防止超时，这里是一个同步调用，会显著增加 ETL 总时长
+                # 在生产环境建议放入 Celery/Redis 队列异步处理
+                # 但为了 v0.6.0 验证效果，我们先直接调用
+                try:
+                    self.kg_builder.run(chunk.content, chunk.metadata, chunk_uuid)
+                except Exception as kg_e:
+                    logger.warning(f"KG Build failed for chunk {chunk_uuid}: {kg_e}")
+
 
                 # 批处理写入 (每 50 条写一次，防止内存溢出)
                 if len(chunks_buffer) >= 50:

@@ -11,7 +11,7 @@ from google.protobuf.json_format import MessageToDict
 
 # --- OTel 初始化 ---
 resource = Resource(attributes={
-    "service.name": "chimera-agent-runtime",
+    "service.name": "chimera-agents-runtime",
     "service.version": "v0.5.0"
 })
 provider = TracerProvider(resource=resource)
@@ -22,7 +22,7 @@ trace.set_tracer_provider(provider)
 
 tracer = trace.get_tracer("chimera.runtime")
 
-def setup_otel(service_name="chimera-agent-runtime", endpoint="http://localhost:4317"):
+def setup_otel(service_name="chimera-agents-runtime", endpoint="http://localhost:4317"):
     """
     初始化 OpenTelemetry 并在全局注册。
     这个函数需要在 main.py 启动时最先调用。
@@ -65,13 +65,13 @@ def trace_agent(agent_name: str):
                 serializable_input = raw_input
 
             with tracer.start_as_current_span(f"🤖 Agent:{agent_name}") as span:
-                span.set_attribute("chimera.agent.name", agent_name)
+                span.set_attribute("chimera.agents.name", agent_name)
                 # 记录格式化后的输入
                 span.set_attribute("chimera.input.payload",
                                    json.dumps(serializable_input, ensure_ascii=False))
 
                 if hasattr(self, 'prompt_path'):
-                    span.set_attribute("chimera.prompt.path", self.prompt_path)
+                    span.set_attribute("chimera.prompts.path", self.prompt_path)
 
                 try:
                     result = func(self, *args, **kwargs)

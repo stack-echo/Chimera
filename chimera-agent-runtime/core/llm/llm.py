@@ -33,7 +33,7 @@ class LLMClient:
                 if role and content:
                     messages.append({"role": role, "content": content})
 
-        # 3. 添加当前问题 (如果 query 已经在 prompt 里了，这里可以不加，取决于 prompt 策略)
+        # 3. 添加当前问题 (如果 query 已经在 prompts 里了，这里可以不加，取决于 prompts 策略)
         messages.append({"role": "user", "content": query})
 
         try:

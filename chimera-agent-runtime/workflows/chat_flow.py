@@ -1,52 +1,72 @@
 import json
 import logging
+import os # 🔥 新增引入
+import yaml # 🔥 新增引入
 from typing import TypedDict, List, Dict, Any, Generator
 from langgraph.graph import StateGraph, END
+from jinja2 import Template # 🔥 新增引入
 
 from core.llm.embedding import EmbeddingModel
 from core.llm.llm import LLMClient
 from core.stores.qdrant_store import QdrantStore
 from core.stores.graph_store import NebulaStore
+# 🔥 引入 QueryAnalysisAgent
+from agents.chat.query_analysis import QueryAnalysisAgent
 
 logger = logging.getLogger(__name__)
 
 # --- 状态定义 ---
 class AgentState(TypedDict):
     query: str
-    chat_history: List[Dict[str, str]] # [{"role": "user", "content": "..."}]
+    chat_history: List[Dict[str, str]]
 
-    # 上下文
+    query_entities: List[str] # 从 QueryAnalysisAgent 获取
+
     retrieved_docs: List[Dict]
-    graph_context: str
+    graph_context: List[str]   # 图谱结果 (三元组字符串)
 
-    # 最终答案
     answer: str
 
 class ChatWorkflow:
     def __init__(self, nebula: NebulaStore, qdrant: QdrantStore, kb_ids: List[int]):
-        """
-        初始化工作流，注入资源
-        """
         self.nebula = nebula
         self.qdrant = qdrant
         self.kb_ids = kb_ids
 
-        # 初始化模型
         self.embed_model = EmbeddingModel.get_instance()
         self.llm = LLMClient()
 
-        # 构建图
+        # 🔥 初始化 QueryAnalysisAgent
+        self.query_analyzer = QueryAnalysisAgent()
+
+        # 🔥 加载生成 Prompt
+        self.synthesis_prompt_config = self._load_prompt("chat/synthesis.yaml")
+
         self.app = self._build_graph()
+
+    # 🔥 新增：加载 Prompt 的辅助方法
+    def _load_prompt(self, filename):
+        base_dir = os.getcwd()
+        if "chimera-agent-runtime" not in base_dir and os.path.exists("chimera-agent-runtime"):
+            base_dir = os.path.join(base_dir, "chimera-agent-runtime")
+        path = os.path.join(base_dir, "prompts", filename)
+
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"❌ 提示词文件未找到: {path}")
+        with open(path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f)
 
     def _build_graph(self):
         workflow = StateGraph(AgentState)
 
         # 定义节点
+        workflow.add_node("query_analysis", self.node_query_analysis) # 🔥 新增节点
         workflow.add_node("retrieve", self.node_retrieve)
         workflow.add_node("generate", self.node_generate)
 
-        # 定义边
-        workflow.set_entry_point("retrieve")
+        # 连线
+        workflow.set_entry_point("query_analysis") # 🔥 入口改为 Query Analysis
+        workflow.add_edge("query_analysis", "retrieve")
         workflow.add_edge("retrieve", "generate")
         workflow.add_edge("generate", END)
 
@@ -54,148 +74,96 @@ class ChatWorkflow:
 
     # --- 节点逻辑 ---
 
+    def node_query_analysis(self, state: AgentState):
+        """步骤 1: 分析用户 Query，提取关键实体"""
+        logger.info(f"🧠 [Chat-1] Query Analysis Agent 正在分析: {state['query']}")
+        entities = self.query_analyzer.run(state["query"])
+        logger.info(f"   -> 识别到实体: {entities}")
+        return {"query_entities": entities}
+
     def node_retrieve(self, state: AgentState):
-        """
-        检索节点：同时查询 向量库(Qdrant) 和 图数据库(Nebula)
-        """
+        """步骤 2: 双路检索 (Vector + Graph)"""
         query = state["query"]
-        logger.info(f"🔍 [Retrieve] 正在检索: {query} (KB IDs: {self.kb_ids})")
+        entities = state.get("query_entities", []) # 🔥 从上一个节点获取实体
 
-        # 1. 向量检索 (Qdrant)
-        try:
-            query_vector = self.embed_model.encode(query)
-            # 调用我们刚写的 search 方法，传入 kb_ids 过滤
-            vector_results = self.qdrant.search(
-                query_vector=query_vector,
-                kb_ids=self.kb_ids,
-                top_k=5
-            )
-        except Exception as e:
-            logger.error(f"Qdrant Search Error: {e}")
-            vector_results = []
+        if not entities: # 如果没有提取到实体，尝试用原始 query 作为兜底
+            entities = [query]
 
-        # 2. 图检索 (Nebula) - 简单示例：查找包含关键词的实体
-        # (这里为了稳健，如果图没准备好，先 try-catch 掉)
-        graph_text = ""
+        logger.info(f"🔍 [Chat-2] 正在检索: {query} (KB IDs: {self.kb_ids}) with Entities: {entities}")
+
+        # A. 向量检索
+        vector_results = []
         try:
-            # 这里的逻辑可以做得很复杂，比如提取实体 -> 查子图
-            # 这里仅作占位，防止报错
-            pass
+            query_vec = self.embed_model.encode(query)
+            vector_results = self.qdrant.search(query_vec, self.kb_ids, top_k=3)
         except Exception as e:
-            logger.error(f"Nebula Search Error: {e}")
+            logger.error(f"Vector Search Error: {e}")
+
+        # B. 图谱检索
+        graph_triplets = []
+        try:
+            # 调用 Store，使用提取的实体
+            graph_triplets = self.nebula.retrieve_subgraph(entities)
+            logger.info(f"🕸️ [Chat-2] 知识图谱命中 {len(graph_triplets)} 条关联知识")
+
+        except Exception as e:
+            logger.error(f"Graph Search Error: {e}")
 
         return {
             "retrieved_docs": vector_results,
-            "graph_context": graph_text
+            "graph_context": graph_triplets
         }
 
     def node_generate(self, state: AgentState):
-        """
-        生成节点：组装 Prompt 但不直接调用 LLM。
-        这里我们不做实际生成，而是准备好上下文，实际的流式生成在 run_stream 里触发。
-        """
-        # 仅做状态传递，LangGraph 运行完这个节点后，我们会拿到 state
+        # 这个节点现在只做状态传递，实际的 Prompt 渲染在 run_stream 统一处理
         return {}
 
     # --- 核心运行逻辑 ---
 
     def run_stream(self, initial_state: dict) -> Generator[Dict[str, Any], None, None]:
+        # 1. 执行 LangGraph 获取最终状态
+        # 我们使用 app.invoke 来同步执行，拿到最终状态
+        final_state = self.app.invoke(initial_state)
+
+        # 从最终状态中获取检索结果
+        query = final_state["query"]
+        vec_docs = final_state.get("retrieved_docs", [])
+        graph_triplets = final_state.get("graph_context", [])
+
+        # 2. 组装 Prompt
+        doc_context_str = "\n".join([f"- {d['content']}" for d in vec_docs])
+        if not doc_context_str:
+            doc_context_str = "无相关文档片段。"
+
+        kg_context_str = "\n".join(graph_triplets)
+        if not kg_context_str:
+            kg_context_str = "无相关知识图谱信息。"
+
+        full_context = f"""
+        【文档片段】：
+        {doc_context_str}
+        
+        【知识图谱路径】：
+        {kg_context_str}
         """
-        执行工作流，并以生成器形式返回事件
-        这适配了 runtime_service.py 的调用方式
-        """
+        # 🔥 从配置文件加载 System 和 User Prompt
+        sys_tmpl = self.synthesis_prompt_config.get("system", "")
+        user_tmpl = self.synthesis_prompt_config.get("user", "")
 
-        # 1. 发送“思考”事件
-        yield {
-            "type": "thought",
-            "node": "Retrieve",
-            "content": "正在知识库中检索相关文档...",
-            "duration": 0
-        }
+        system_prompt = Template(sys_tmpl).render(full_context=full_context)
+        user_prompt_content = Template(user_tmpl).render(query=query) # user_prompt 只包含 query
 
-        # 2. 运行检索节点 (手动 invoke graph 的一部分，或者运行整个 graph 拿到结果)
-        # 为了简单，我们这里直接运行 LangGraph，拿到检索结果
-        # 注意：这里我们使用 invoke 同步执行检索，因为检索通常很快
-
-        # 构造 LangGraph 需要的输入
-        input_state = {
-            "query": initial_state["query"],
-            "chat_history": initial_state.get("history", []),
-            "retrieved_docs": [],
-            "graph_context": "",
-            "answer": ""
-        }
-
-        # 运行图 (直到 retrieve 完成)
-        # 这里有一个技巧：我们手动调用节点逻辑，以便更好控制流式输出
-        # 或者，我们可以运行 app.invoke(input_state) 拿到 context
-
-        # === 手动执行 Retrieval 阶段 ===
-        retrieve_output = self.node_retrieve(input_state)
-        docs = retrieve_output["retrieved_docs"]
-
-        # 发送引用事件
-        if docs:
-            formatted_docs = []
-            for doc in docs:
-                meta = doc.get("metadata", {})
-                formatted_docs.append({
-                    "file_name": meta.get("file_name", "unknown"),
-                    "page": meta.get("page_number", 1),
-                    "score": doc.get("score", 0),
-                    "snippet": doc.get("content", "")[:100] + "..."
-                })
-            yield {
-                "type": "reference",
-                "docs": formatted_docs
-            }
-
-        # === 执行 Generation 阶段 ===
-        yield {
-            "type": "thought",
-            "node": "Generate",
-            "content": "正在整理检索结果并生成回答...",
-            "duration": 0
-        }
-
-        # 3. 组装 Prompt
-        context_str = "\n\n".join([f"[文档片段]: {d['content']}" for d in docs])
-        if not context_str:
-            context_str = "未找到相关文档，请根据常识回答。"
-
-        system_prompt = f"""
-你是一个专业的企业知识助手。请根据以下参考资料回答用户问题。
-如果参考资料无法回答问题，请诚实说明。
-
-【参考资料】：
-{context_str}
-"""
-        # Query 独立传递
-        # 在 llm.stream_chat 中会处理 messages
-
-        # 4. 调用 LLM 流式生成
-        # 这里直接调用 LLMClient，绕过 Graph 的静态返回，实现 Token 流
+        # 3. 调用 LLM 流式生成
         try:
             for event in self.llm.stream_chat(
-                    query=initial_state['query'],
+                    query=user_prompt_content, # 将渲染后的 user_prompt 内容作为 query 传入
                     system_prompt=system_prompt,
                     history=initial_state.get("history", [])
             ):
-                # 透传内容
                 if event["type"] == "content":
-                    yield {
-                        "type": "delta",
-                        "content": event["data"]
-                    }
-                # 🔥 透传 Usage
+                    yield {"type": "delta", "content": event["data"]}
                 elif event["type"] == "usage":
-                    yield {
-                        "type": "usage",
-                        "usage": event["data"]
-                    }
+                    yield {"type": "usage", "usage": event["data"]}
         except Exception as e:
-            logger.error(f"LLM Stream Error: {e}")
-            yield {
-                "type": "delta",
-                "content": f"[生成出错: {str(e)}]"
-            }
+            logger.error(f"LLM Stream Error in Generation: {e}")
+            yield {"type": "error", "content": str(e)}

@@ -45,7 +45,7 @@ docker-compose up -d
 
 ### 2. 启动 Python 运行时
 ```bash
-cd chimera-agent-runtime
+cd chimera-agents-runtime
 # 1. 安装依赖 (推荐使用 venv)
 pip install -r requirements.txt
 
