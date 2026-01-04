@@ -1,1 +1,0 @@
-{"indexed_fields":{"kb_id":"integer"},"indexed_types":{"kb_id":[{"index_type":"int_map_index","mutability":"mutable","storage_type":"gridstore"},{"index_type":"int_index","mutability":"mutable","storage_type":"gridstore"},{"index_type":"null_index","mutability":"mutable","storage_type":{"mmap":{"is_on_disk":false}}}]},"skip_rocksdb":true}

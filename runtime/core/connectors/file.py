@@ -1,7 +1,7 @@
 import os
 import logging
 from .base import BaseConnector, DocumentChunk, ConnectorFactory  # 引入工厂
-from tools.doc_parser import DoclingParser
+from skills.doc_parser import DoclingParser
 from core.stores.minio_store import MinioStore
 
 logger = logging.getLogger(__name__)
@@ -36,10 +36,11 @@ class FileConnector(BaseConnector):
                 yield DocumentChunk(
                     content=chunk["content"],
                     metadata={
-                        "page_number": chunk["page"],
+                        "page_number": chunk["metadata"].get("page_number", 1),
                         "file_name": self.file_name,
                         "file_path": self.storage_path,
-                        "source": "file"
+                        "source": "file",
+                        "breadcrumb": chunk["metadata"].get("breadcrumb", "")
                     }
                 )
 

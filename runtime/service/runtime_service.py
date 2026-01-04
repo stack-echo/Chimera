@@ -6,6 +6,11 @@ from core.managers.etl_manager import ETLManager
 from core.managers.inference_manager import InferenceManager
 from core.stores.qdrant_store import QdrantStore
 
+from opentelemetry import trace
+from opentelemetry.trace import propagation
+
+tracer = trace.get_tracer(__name__)
+
 logger = logging.getLogger(__name__)
 
 class ChimeraRuntimeService(runtime_pb2_grpc.RuntimeServiceServicer):
@@ -59,70 +64,95 @@ class ChimeraRuntimeService(runtime_pb2_grpc.RuntimeServiceServicer):
         """
         智能体对话接口 (Server Streaming)
         """
-        try:
-            # 调用 Manager 获取事件流
-            iterator = self.inf_mgr.run_chat(
-                query=request.query,
-                history=request.history,
-                app_config_json=request.app_config_json
-            )
+        # --- 1. 从 gRPC Metadata 提取 Trace ID ---
+        rpc_metadata = dict(context.invocation_metadata())
+        trace_id = rpc_metadata.get('x-trace-id')
 
-            # 将 Manager 返回的 Dict 转换为 Protobuf Message
-            for event in iterator:
-                event_type = event.get("type")
+        # --- 2. 开启一个关联的 Span ---
+        # 如果 Go 传了 ID，我们手动创建一个带有该 ID 的 Context
+        # 这样 Python 产生的所有子 Span 都会挂在这个 ID 下
+        with tracer.start_as_current_span("RPC:RunAgent") as span:
+            if trace_id:
+                span.set_attribute("chimera.trace_id", trace_id)
+                logger.info(f"🔗 Linked to Go Trace ID: {trace_id}")
+            try:
+                # 调用 Manager 获取事件流
+                iterator = self.inf_mgr.run_chat(
+                    query=request.query,
+                    history=request.history,
+                    app_config_json=request.app_config_json
+                )
 
-                # 1. 思考过程
-                if event_type == "thought":
-                    meta = event.get("meta", {})
-                    yield runtime_pb2.RunAgentResponse(
-                        type="thought",
-                        payload=event.get("payload", ""),
-                        meta=runtime_pb2.AgentMeta(
-                            node_name=meta.get("node_name", "Agent"),
-                            trace_id=meta.get("trace_id", ""),
-                            duration_ms=meta.get("duration_ms", 0)
+                # 将 Manager 返回的 Dict 转换为 Protobuf Message
+                for event in iterator:
+                    event_type = event.get("type")
+
+                    # 1. 思考过程
+                    if event_type == "thought":
+                        meta = event.get("meta", {})
+                        yield runtime_pb2.RunAgentResponse(
+                            type="thought",
+                            payload=event.get("payload", ""),
+                            meta=runtime_pb2.AgentMeta(
+                                node_name=meta.get("node_name", "Agent"),
+                                trace_id=meta.get("trace_id", ""),
+                                duration_ms=meta.get("duration_ms", 0)
+                            )
                         )
-                    )
 
-                # 2. 增量文本 (打字机效果)
-                elif event_type == "delta":
-                    yield runtime_pb2.RunAgentResponse(
-                        type="delta",
-                        payload=event.get("payload", "")
-                    )
-
-                # 3. 引用来源
-                elif event_type == "reference":
-                    yield runtime_pb2.RunAgentResponse(
-                        type="reference",
-                        payload=event.get("payload", "[]")
-                    )
-
-                # 4. 执行摘要 (End of Stream)
-                elif event_type == "summary":
-                    s = event.get("summary", {})
-                    yield runtime_pb2.RunAgentResponse(
-                        type="summary",
-                        summary=runtime_pb2.RunSummary(
-                            total_tokens=s.get("total_tokens", 0),
-                            prompt_tokens=s.get("prompt_tokens", 0),
-                            completion_tokens=s.get("completion_tokens", 0),
-                            total_duration_ms=s.get("total_duration_ms", 0),
-                            final_status=s.get("final_status", "success")
+                    # 2. 增量文本 (打字机效果)
+                    elif event_type == "delta":
+                        yield runtime_pb2.RunAgentResponse(
+                            type="delta",
+                            payload=event.get("payload", "")
                         )
-                    )
 
-                # 5. 逻辑错误
-                elif event_type == "error":
-                    yield runtime_pb2.RunAgentResponse(
-                        type="error",
-                        payload=event.get("payload", "Unknown Logic Error")
-                    )
+                    # 3. 引用来源
+                    elif event_type == "reference":
+                        yield runtime_pb2.RunAgentResponse(
+                            type="reference",
+                            payload=event.get("payload", "[]")
+                        )
 
-        except Exception as e:
-            # 系统级崩溃捕获
-            logger.error(f"❌ RPC RunAgent Crashed: {str(e)}")
-            yield runtime_pb2.RunAgentResponse(
-                type="error",
-                payload=f"Internal Server Error: {str(e)}"
-            )
+                    # 4. 执行摘要 (End of Stream)
+                    elif event_type == "summary":
+                        s = event.get("summary", {})
+                        yield runtime_pb2.RunAgentResponse(
+                            type="summary",
+                            summary=runtime_pb2.RunSummary(
+                                total_tokens=s.get("total_tokens", 0),
+                                prompt_tokens=s.get("prompt_tokens", 0),
+                                completion_tokens=s.get("completion_tokens", 0),
+                                total_duration_ms=s.get("total_duration_ms", 0),
+                                final_status=s.get("final_status", "success")
+                            )
+                        )
+
+                    # 5. 逻辑错误
+                    elif event_type == "error":
+                        yield runtime_pb2.RunAgentResponse(
+                            type="error",
+                            payload=event.get("payload", "Unknown Logic Error")
+                        )
+
+                    # 6. 引用来源
+                    elif event_type == "reference":
+                        yield runtime_pb2.RunAgentResponse(
+                            type="reference",
+                            payload=event.get("payload", "[]")
+                        )
+
+                    # 7. 子图回传
+                    elif event_type == "subgraph":
+                        yield runtime_pb2.RunAgentResponse(
+                            type="subgraph",
+                            payload=event.get("payload", "{}")
+                        )
+
+            except Exception as e:
+                # 系统级崩溃捕获
+                logger.error(f"❌ RPC RunAgent Crashed: {str(e)}")
+                yield runtime_pb2.RunAgentResponse(
+                    type="error",
+                    payload=f"Internal Server Error: {str(e)}"
+                )

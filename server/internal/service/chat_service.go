@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"log"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc/metadata"
 
 	pb "Chimera/server/api/runtime/v1"
 	"Chimera/server/internal/data"
@@ -35,7 +38,21 @@ func NewChatService(data *data.Data, adapter *RuntimeAdapter) *ChatService {
 func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatReq, respChan chan<- string) {
 	defer close(respChan)
 
-	// 1. 鉴权
+	// 1. 获取或生成 Trace ID
+	// 优先从 context 获取（如果中间件已生成），否则生成一个新的
+	traceID := ""
+	if tid, ok := ctx.Value("traceID").(string); ok {
+		traceID = tid
+	} else {
+		traceID = strings.ReplaceAll(uuid.New().String(), "-", "")
+	}
+
+	// 2. 注入 gRPC Metadata
+	// 将 trace-id 放入 OutgoingContext，Python 端就能收到
+	md := metadata.Pairs("x-trace-id", traceID)
+	ctx = metadata.NewOutgoingContext(ctx, md)
+
+	// 3. 鉴权
 	if req.KbID > 0 {
 		if err := s.checkKbPermission(req.KbID, userID); err != nil {
 			respChan <- fmt.Sprintf("ERR: ⛔️ %s", err.Error())
@@ -43,7 +60,7 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 		}
 	}
 
-	// 2. 构造配置给 Python
+	// 4. 构造配置给 Python
 	configData := map[string]interface{}{
 		"kb_ids": []uint{req.KbID},
 		"org_id": req.OrgID,
@@ -57,7 +74,7 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 		AppConfigJson: string(configBytes),
 	}
 
-	// 3. 调用 Adapter
+	// 5. 调用 Adapter
 	stream, err := s.Adapter.StreamChat(ctx, grpcReq)
 	if err != nil {
 		log.Printf("❌ gRPC Link Error: %v", err)
@@ -65,7 +82,7 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 		return
 	}
 
-	// 4. 处理流响应
+	// 6. 处理流响应
 	var fullAnswerBuilder strings.Builder
 	for {
 		resp, err := stream.Recv()
@@ -87,6 +104,8 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 			respChan <- "REF: " + resp.Payload
 		case "summary":
 			go s.saveRunLog(userID, req, resp.Summary, fullAnswerBuilder.String())
+		case "subgraph":
+			respChan <- "GRAPH: " + resp.Payload
 		case "error":
 			respChan <- "\n[Error]: " + resp.Payload
 		}

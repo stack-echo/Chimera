@@ -19,6 +19,8 @@ def load_enterprise_plugins():
         logger.info("ℹ️ [Loader] No 'enterprise' directory found. Running in Community Edition.")
         return False
 
+    logger.info(f"📂 [Loader] 正在扫描企业版插件目录: {enterprise_dir}")
+
     # 确保 runtime 目录在 sys.path 中，以便可以 import enterprise...
     # (通常运行 main.py 时已经在路径中了，这里是双重保险)
 
@@ -40,8 +42,21 @@ def load_enterprise_plugins():
             except Exception as e:
                 logger.warning(f"⚠️ [Loader] Failed to load connector '{name}': {e}")
 
-    # 3. 这里可以扩展加载其他组件 (如 Workflows, Tools)
+    # 扫描并加载企业版 KG Agents
+    agents_path = os.path.join(enterprise_dir, "core", "agents", "kg")
+    if os.path.exists(agents_path):
+        logger.info(f"🔍 [Loader] 正在探测 Agent 路径: {agents_path}")
+        for _, name, _ in pkgutil.iter_modules([agents_path]):
+            if name == "__init__": continue
+            module_name = f"enterprise.core.agents.kg.{name}"
+            try:
+                importlib.import_module(module_name)
+                logger.info(f"✅ [Loader] 成功加载并注册 Agent: {name}")
+                loaded_any = True
+            except Exception as e:
+                print(f"⚠️ Failed to load agent {name}: {e}")
 
+    # 3. 这里可以扩展加载其他组件 (如 Workflows, Tools)
     if loaded_any:
         logger.info("✅ Enterprise environment initialized.")
     else:
