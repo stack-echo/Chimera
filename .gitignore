@@ -20,7 +20,7 @@ venv/
 
 # --- Project Specific ---
 # 忽略 Docker 挂载的本地数据目录
-/local_data/
+/deploy/local_data/
 # 忽略环境变量文件
 .env
 *.pem
@@ -45,4 +45,3 @@ runtime/enterprise/workflows/*
 
 # 忽略 Dockerfile 的企业版构建脚本
 Dockerfile.enterprise
-docker-compose-ee.yml

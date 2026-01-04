@@ -1,0 +1,213 @@
+version: '3.8'
+
+services:
+  # =========================================
+  # 🟡 业务应用层 (Enterprise Edition)
+  # =========================================
+
+  server-ee:
+    container_name: chimera_server_ee
+    build:
+      context: ../server
+      dockerfile: Dockerfile.ee # 🔥 构建企业版入口 (cmd/server-ee/main.go)
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=chimera_user
+      - DB_PASSWORD=chimera_secret
+      - DB_NAME=chimera_main
+      - REDIS_HOST=redis
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=chimera_minio
+      - MINIO_SECRET_KEY=chimera_minio_secret
+      - AI_GRPC_HOST=runtime-ee:50051 # 指向企业版 Runtime
+      - OTEL_ENDPOINT=signoz:4317
+      - CHIMERA_EDITION=enterprise
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    networks:
+      - chimera_net
+
+  runtime-ee:
+    container_name: chimera_runtime_ee
+    build:
+      context: ../runtime
+      dockerfile: Dockerfile.ee # 🔥 COPY enterprise 目录
+    restart: always
+    ports:
+      - "50051:50051"
+    environment:
+      - PORT=50051
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=chimera_minio
+      - MINIO_SECRET_KEY=chimera_minio_secret
+      - OTEL_ENDPOINT=signoz:4317
+      # 🔥 注入图数据库配置，激活企业级 GraphRAG
+      - NEBULA_HOST=nebula-graphd
+      - NEBULA_PORT=9669
+      - NEBULA_USER=root
+      - NEBULA_PASSWORD=nebula
+      - CHIMERA_EDITION=enterprise
+    volumes:
+      - ../runtime/prompts:/app/prompts
+    depends_on:
+      - qdrant
+      - nebula-graphd
+    networks:
+      - chimera_net
+
+  # 前端如果是通用的，可以直接复用，或者也构建一个 web-ee
+  web:
+    container_name: chimera_web
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - server-ee
+    networks:
+      - chimera_net
+
+  # =========================================
+  # 🔵 基础设施层 (含 NebulaGraph)
+  # =========================================
+
+  # 复用基础组件...
+  postgres:
+    image: postgres:15-alpine
+    container_name: chimera_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: chimera_user
+      POSTGRES_PASSWORD: chimera_secret
+      POSTGRES_DB: chimera_main
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./local_data/postgres:/var/lib/postgresql/data
+    networks:
+      - chimera_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chimera_user -d chimera_main"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: chimera_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass chimera_secret
+    volumes:
+      - ./local_data/redis:/data
+    networks:
+      - chimera_net
+
+  minio:
+    image: minio/minio
+    container_name: chimera_minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: chimera_minio
+      MINIO_ROOT_PASSWORD: chimera_minio_secret
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./local_data/minio:/data
+    networks:
+      - chimera_net
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: chimera_qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./local_data/qdrant:/qdrant/storage
+    networks:
+      - chimera_net
+
+  signoz:
+    image: signoz/signoz-otel-collector:latest
+    container_name: chimera_signoz
+    ports:
+      - "4317:4317"
+    networks:
+      - chimera_net
+
+  # 🔥🔥🔥 企业版专属：NebulaGraph 组件 🔥🔥🔥
+  nebula-metad:
+    image: vesoft/nebula-metad:v3.6.0
+    container_name: chimera_nebula_metad
+    restart: on-failure
+    environment:
+      USER: root
+      TZ: Asia/Shanghai
+    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_metad --ws_ip=chimera_nebula_metad --port=9559 --ws_http_port=19559 --data_path=/data/meta
+    volumes:
+      - ./local_data/nebula/meta:/data/meta
+    networks:
+      - chimera_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19559/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nebula-storaged:
+    image: vesoft/nebula-storaged:v3.6.0
+    container_name: chimera_nebula_storaged
+    restart: on-failure
+    environment:
+      USER: root
+      TZ: Asia/Shanghai
+    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_storaged --ws_ip=chimera_nebula_storaged --port=9779 --ws_http_port=19779 --data_path=/data/storage
+    depends_on:
+      - nebula-metad
+    volumes:
+      - ./local_data/nebula/storage:/data/storage
+    networks:
+      - chimera_net
+
+  nebula-graphd:
+    image: vesoft/nebula-graphd:v3.6.0
+    container_name: chimera_nebula_graphd
+    restart: on-failure
+    environment:
+      USER: root
+      TZ: Asia/Shanghai
+    ports:
+      - "9669:9669"
+      - "19669:19669"
+    command: --meta_server_addrs=chimera_nebula_metad:9559 --local_ip=chimera_nebula_graphd --ws_ip=chimera_nebula_graphd --port=9669 --ws_http_port=19669 --log_dir=/logs --v=0 --minloglevel=0
+    depends_on:
+      - nebula-metad
+      - nebula-storaged
+    networks:
+      - chimera_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19669/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  chimera_net:
+    driver: bridge
