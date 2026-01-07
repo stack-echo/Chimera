@@ -16,6 +16,7 @@ import (
 	pb "Chimera/server/api/runtime/v1"
 	"Chimera/server/internal/data"
 	"Chimera/server/internal/dto"
+	"Chimera/server/internal/middleware"
 	"Chimera/server/internal/model"
 )
 
@@ -39,13 +40,7 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 	defer close(respChan)
 
 	// 1. 获取或生成 Trace ID
-	// 优先从 context 获取（如果中间件已生成），否则生成一个新的
-	traceID := ""
-	if tid, ok := ctx.Value("traceID").(string); ok {
-		traceID = tid
-	} else {
-		traceID = strings.ReplaceAll(uuid.New().String(), "-", "")
-	}
+	traceID, _ := ctx.Value(middleware.TraceContextKey).(string)
 
 	// 2. 注入 gRPC Metadata
 	// 将 trace-id 放入 OutgoingContext，Python 端就能收到
@@ -75,10 +70,10 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 	}
 
 	// 5. 调用 Adapter
-	stream, err := s.Adapter.StreamChat(ctx, grpcReq)
+	stream, err := s.Adapter.client.RunAgent(grpcCtx, grpcReq)
 	if err != nil {
 		log.Printf("❌ gRPC Link Error: %v", err)
-		respChan <- "ERR: 服务端连接失败"
+		respChan <- "ERR: 无法连接 AI 引擎"
 		return
 	}
 
@@ -103,7 +98,7 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 		case "reference":
 			respChan <- "REF: " + resp.Payload
 		case "summary":
-			go s.saveRunLog(userID, req, resp.Summary, fullAnswerBuilder.String())
+			go s.saveRunLog(userID, req, resp.Summary, fullAnswerBuilder.String(), traceID)
 		case "subgraph":
 			respChan <- "GRAPH: " + resp.Payload
 		case "error":

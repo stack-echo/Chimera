@@ -75,6 +75,7 @@ func Run() {
 
 	// 6. 初始化 Gin Server
 	r := gin.Default()
+	r.Use(middleware.TraceMiddleware())
 
 	// CORS 配置
 	r.Use(cors.New(cors.Config{
@@ -123,7 +124,7 @@ func Run() {
 	}
 
 	log.Println("🚀 Chimera 后端已启动，监听端口 :8080")
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(":8082"); err != nil {
 		log.Fatalf("❌ Server 启动失败: %v", err)
 	}
 }

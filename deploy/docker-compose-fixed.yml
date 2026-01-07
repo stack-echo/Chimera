@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: chimera_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: chimera_user
+      POSTGRES_PASSWORD: chimera_password
+      POSTGRES_DB: chimera_main
+    ports:
+      - "25432:5432"
+    volumes:
+      - chimera_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chimera_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2023-10-07T15-07-38Z
+    container_name: chimera_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "29000:9000"
+      - "29001:9001"
+    volumes:
+      - chimera_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: chimera_redis
+    restart: unless-stopped
+    ports:
+      - "26379:6379"
+    volumes:
+      - chimera_redis_data:/data
+    command: redis-server --appendonly yes
+
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: chimera_qdrant
+    restart: unless-stopped
+    ports:
+      - "26333:6333"
+      - "26334:6334"
+    volumes:
+      - chimera_qdrant_data:/qdrant/storage
+
+  nebula-graphd:
+    image: vesoft/nebula-graphd:v3.6.0
+    container_name: chimera_nebula_graphd
+    restart: unless-stopped
+    ports:
+      - "29669:9669"
+      - "39669:19669"
+    volumes:
+      - chimera_nebula_data:/usr/local/nebula/data
+    depends_on:
+      - nebula-metad
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19669/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nebula-metad:
+    image: vesoft/nebula-metad:v3.6.0
+    container_name: chimera_nebula_metad
+    restart: unless-stopped
+    volumes:
+      - chimera_nebula_data:/usr/local/nebula/data
+    depends_on:
+      - nebula-storaged
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19559/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  nebula-storaged:
+    image: vesoft/nebula-storaged:v3.6.0
+    container_name: chimera_nebula_storaged
+    restart: unless-stopped
+    volumes:
+      - chimera_nebula_data:/usr/local/nebula/data
+
+volumes:
+  chimera_postgres_data:
+  chimera_minio_data:
+  chimera_redis_data:
+  chimera_qdrant_data:
+  chimera_nebula_data:

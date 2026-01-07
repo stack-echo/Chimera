@@ -12,82 +12,39 @@ from google.protobuf.message import Message
 from google.protobuf.json_format import MessageToDict
 import collections
 
-# --- OTel 初始化 ---
-resource = Resource(attributes={
-    "service.name": "chimera-agents-runtime",
-    "service.version": "v0.5.0"
-})
-provider = TracerProvider(resource=resource)
-# 默认发送到 SigNoz 的 4317 端口
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True))
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
-
-# 定义全局开关变量
 OTEL_ENABLED = os.getenv("ENABLE_OTEL", "true").lower() == "true"
 
-tracer = trace.get_tracer("chimera.runtime")
-
 def setup_otel(service_name="chimera-brain-python", endpoint="http://localhost:4317"):
-    """
-    增强版 OTel 初始化：支持开关、超时控制、异常隔离
-    """
-    # 1. 增加开关：方便本地调试时一键关闭
-    # 在 .env 中设置 ENABLE_OTEL=false 即可关闭
-    if os.getenv("ENABLE_OTEL", "true").lower() == "false":
-        print("ℹ️ OpenTelemetry tracing is disabled by environment variable.")
+    if not OTEL_ENABLED:
+        print("ℹ️ OTel tracing is disabled.")
         return
 
+    resource = Resource(attributes={"service.name": service_name, "service.version": "v0.6.0"})
+    provider = TracerProvider(resource=resource)
+
     try:
-        resource = Resource(attributes={
-            "service.name": service_name,
-            "service.version": "v0.6.0"
-        })
-
-        # 2. 增加超时控制 (timeout=2)
-        # 如果 SigNoz 2秒内连不上，不再死磕，减少对主业务的影响
-        otlp_exporter = OTLPSpanExporter(
-            endpoint=endpoint,
-            insecure=True,
-            timeout=2  # 🔥 关键：防止 UNAVAILABLE 导致的系统阻塞
-        )
-
-        # 3. 优化 Batch 处理器
-        span_processor = BatchSpanProcessor(
-            otlp_exporter,
-            max_queue_size=512,          # 内存缓冲区大小
-            schedule_delay_millis=5000,   # 每5秒发送一次，减少 CPU 占用
-        )
-
-        provider = TracerProvider(resource=resource)
-        provider.add_span_processor(span_processor)
-
-        # 4. 解决 "Overriding of current TracerProvider is not allowed" 警告
-        try:
-            trace.set_tracer_provider(provider)
-            print(f"✅ OpenTelemetry initialized for {service_name}, exporting to {endpoint}")
-        except ValueError:
-            # 说明已经设置过了，静默处理
-            pass
-
+        # 增加超时控制，防止 SigNoz 连不上卡死系统
+        exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True, timeout=2)
+        processor = BatchSpanProcessor(exporter)
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+        print(f"✅ OTel initialized: exporting to {endpoint}")
     except Exception as e:
-        # 5. 异常隔离：Tracing 失败绝对不能导致 main.py 启动失败
-        print(f"⚠️ OpenTelemetry initialization failed: {e}. The app will run without tracing.")
+        print(f"⚠️ OTel Init Failed: {e}")
 
 def convert_to_serializable(obj):
     """
-    更强大的递归转换：处理 gRPC 的 RepeatedCompositeContainer 和字典
+    递归转换所有对象为原生 Python 类型
     """
     if isinstance(obj, Message):
         return MessageToDict(obj)
-
-    if isinstance(obj, collections.abc.Iterable) and not isinstance(obj, (str, dict, bytes)):
-        return [convert_to_serializable(item) for item in obj]
-
-    if isinstance(obj, dict):
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    if isinstance(obj, collections.abc.Mapping):
         return {k: convert_to_serializable(v) for k, v in obj.items()}
-
-    return obj
+    if isinstance(obj, collections.abc.Iterable) and not isinstance(obj, (bytes, str)):
+        return [convert_to_serializable(item) for item in obj]
+    return str(obj)
 
 def trace_agent(agent_name: str):
     """
