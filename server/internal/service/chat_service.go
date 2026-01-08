@@ -5,23 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"log"
 	"strings"
 	"time"
 
-	"google.golang.org/grpc/metadata"
-
 	pb "Chimera/server/api/runtime/v1"
 	"Chimera/server/internal/data"
 	"Chimera/server/internal/dto"
-	"Chimera/server/internal/middleware"
+	"Chimera/server/internal/middleware" // 确保引用了中间件
 	"Chimera/server/internal/model"
+
+	"google.golang.org/grpc/metadata"
 )
 
-// ChatService
-// 职责：只专注于对话流、历史记录、日志审计
+// ChatService 职责：只专注于对话流、历史记录、日志审计
 type ChatService struct {
 	Data    *data.Data
 	Adapter *RuntimeAdapter
@@ -39,15 +37,15 @@ func NewChatService(data *data.Data, adapter *RuntimeAdapter) *ChatService {
 func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatReq, respChan chan<- string) {
 	defer close(respChan)
 
-	// 1. 获取或生成 Trace ID
+	// 1. 获取并注入 Trace ID 到 gRPC 元数据
 	traceID, _ := ctx.Value(middleware.TraceContextKey).(string)
-
-	// 2. 注入 gRPC Metadata
-	// 将 trace-id 放入 OutgoingContext，Python 端就能收到
+	if traceID == "" {
+		traceID = "internal-gen-" + fmt.Sprintf("%d", time.Now().UnixNano())
+	}
 	md := metadata.Pairs("x-trace-id", traceID)
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	grpcCtx := metadata.NewOutgoingContext(ctx, md) // 🔥 定义 grpcCtx
 
-	// 3. 鉴权
+	// 2. 鉴权
 	if req.KbID > 0 {
 		if err := s.checkKbPermission(req.KbID, userID); err != nil {
 			respChan <- fmt.Sprintf("ERR: ⛔️ %s", err.Error())
@@ -55,7 +53,7 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 		}
 	}
 
-	// 4. 构造配置给 Python
+	// 3. 构造配置给 Python
 	configData := map[string]interface{}{
 		"kb_ids": []uint{req.KbID},
 		"org_id": req.OrgID,
@@ -69,15 +67,15 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 		AppConfigJson: string(configBytes),
 	}
 
-	// 5. 调用 Adapter
-	stream, err := s.Adapter.client.RunAgent(grpcCtx, grpcReq)
+	// 4. 调用 Adapter (传入上面定义的 grpcCtx)
+	stream, err := s.Adapter.StreamChat(grpcCtx, grpcReq)
 	if err != nil {
 		log.Printf("❌ gRPC Link Error: %v", err)
-		respChan <- "ERR: 无法连接 AI 引擎"
+		respChan <- "ERR: 服务端连接失败"
 		return
 	}
 
-	// 6. 处理流响应
+	// 5. 处理流响应
 	var fullAnswerBuilder strings.Builder
 	for {
 		resp, err := stream.Recv()
@@ -97,17 +95,18 @@ func (s *ChatService) StreamChat(ctx context.Context, userID uint, req dto.ChatR
 			respChan <- "THOUGHT: " + resp.Payload
 		case "reference":
 			respChan <- "REF: " + resp.Payload
-		case "summary":
-			go s.saveRunLog(userID, req, resp.Summary, fullAnswerBuilder.String(), traceID)
 		case "subgraph":
 			respChan <- "GRAPH: " + resp.Payload
+		case "summary":
+			// 🔥 修正：确保参数个数与下面的 saveRunLog 定义一致
+			go s.saveRunLog(userID, req, resp.Summary, fullAnswerBuilder.String(), traceID)
 		case "error":
 			respChan <- "\n[Error]: " + resp.Payload
 		}
 	}
 }
 
-// checkKbPermission 私有鉴权 (ChatService 独享)
+// checkKbPermission 私有鉴权
 func (s *ChatService) checkKbPermission(kbID uint, userID uint) error {
 	var kb model.KnowledgeBase
 	if err := s.Data.DB.First(&kb, kbID).Error; err != nil {
@@ -130,7 +129,8 @@ func (s *ChatService) checkKbPermission(kbID uint, userID uint) error {
 }
 
 // saveRunLog 日志落库
-func (s *ChatService) saveRunLog(userID uint, req dto.ChatReq, summary *pb.RunSummary, answer string) {
+// 🔥 修正：增加 traceID 参数，匹配调用方
+func (s *ChatService) saveRunLog(userID uint, req dto.ChatReq, summary *pb.RunSummary, answer string, traceID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -141,6 +141,7 @@ func (s *ChatService) saveRunLog(userID uint, req dto.ChatReq, summary *pb.RunSu
 		SessionID:        req.SessionID,
 		Query:            req.Query,
 		Answer:           answer,
+		TraceID:          traceID, // 👈 存入 TraceID 方便以后监控跳转
 		TotalTokens:      int(summary.TotalTokens),
 		PromptTokens:     int(summary.PromptTokens),
 		CompletionTokens: int(summary.CompletionTokens),

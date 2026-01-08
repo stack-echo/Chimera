@@ -94,7 +94,7 @@ class ETLManager:
         """
         执行流水线时，直接从注册表取 Agent
         """
-        if not self.is_kg_active:
+        if not self.nebula or not KGRegistry.is_active():
             return
 
         try:
@@ -103,6 +103,10 @@ class ETLManager:
             extractor = KGRegistry.get_agent("extractor")
             inspector = KGRegistry.get_agent("inspector")
             resolver = KGRegistry.get_agent("resolution")
+            es_indexer = KGRegistry.get_agent("es_indexer")
+            if es_indexer:
+                for ent in final_kb['entities']:
+                    es_indexer.index_entity(ent['name'], vid)
 
             if not all([extractor, inspector, resolver]):
                 return

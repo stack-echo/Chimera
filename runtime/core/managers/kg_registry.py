@@ -1,18 +1,25 @@
-from typing import Dict, Any, Optional
+import sys
 
 class KGRegistry:
-    _agents: Dict[str, Any] = {}
+    """
+    使用 sys.modules 确保在任何导入方式下都指向同一个字典
+    """
+    @classmethod
+    def _get_storage(cls):
+        if not hasattr(sys, "_chimera_kg_agents"):
+            sys._chimera_kg_agents = {}
+        return sys._chimera_kg_agents
 
     @classmethod
-    def register(cls, name: str, agent_instance: Any):
-        cls._agents[name] = agent_instance
-        print(f"🔓 [Registry] Agent '{name}' registered.")
+    def register(cls, name, agent_instance):
+        storage = cls._get_storage()
+        storage[name] = agent_instance
+        print(f"🔓 [Registry] Agent '{name}' registered in global storage.")
 
     @classmethod
-    def get_agent(cls, name: str) -> Optional[Any]:
-        return cls._agents.get(name)
+    def get_agent(cls, name):
+        return cls._get_storage().get(name)
 
     @classmethod
-    def is_active(cls) -> bool:
-        # 如果注册了核心抽取器，则认为图谱流水线已激活
-        return "extractor" in cls._agents
+    def is_active(cls):
+        return "extractor" in cls._get_storage()

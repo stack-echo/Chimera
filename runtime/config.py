@@ -46,12 +46,17 @@ class Config:
     # 桶名称要和 Go 端保持一致
     MINIO_BUCKET = os.getenv("MINIO_BUCKET", "chimera-docs")
 
-    # --- 业务参数 ---
+    ES_HOST = os.getenv("ES_HOST", "127.0.0.1")
+    ES_PORT = int(os.getenv("ES_PORT", 29200))
+
+# --- 业务参数 ---
     CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 500))
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 50))
 
     @staticmethod
     def validate():
+        if not Config.ES_HOST:
+            print("ℹ️ ES_HOST not set, running without Full-text search support.")
         required_keys = {
             "DEEPSEEK_API_KEY": Config.DEEPSEEK_API_KEY,
             # "NEBULA_HOST": Config.NEBULA_HOST

@@ -1,15 +1,13 @@
-# runtime/test.py
+# runtime/nebula_test.py
+from config import Config
+from enterprise.core.stores.graph_store import NebulaStore
 import logging
-from loader import load_enterprise_plugins
-from core.managers.kg_registry import KGRegistry
 
-# 配置日志查看输出
 logging.basicConfig(level=logging.INFO)
 
-print("--- 开始加载测试 ---")
-load_enterprise_plugins()
-print("--- 加载结束 ---")
-
-print(f"Extractor Ready: {KGRegistry.get_agent('extractor') is not None}")
-print(f"Inspector Ready: {KGRegistry.get_agent('inspector') is not None}")
-print(f"Resolver Ready: {KGRegistry.get_agent('resolution') is not None}")
+try:
+    print(f"尝试连接: {Config.NEBULA_HOST}:{Config.NEBULA_PORT}")
+    store = NebulaStore(Config)
+    print("🚀 恭喜！连接完全成功！")
+except Exception as e:
+    print(f"❌ 连接失败，原因为: {e}")
