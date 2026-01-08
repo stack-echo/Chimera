@@ -1,152 +1,117 @@
-# 🦄 Chimera (v0.6.0)
+# 🦄 Chimera (v0.6.1)
 
 > **The Observable AI Agent Platform.**
-> **An Enterprise-grade PaaS for Multi-Agent Orchestration & RAG.**
+> **A Cognitive-Enhanced Multi-Agent PaaS Platform for Enterprises.**
 
 [![License](https://img.shields.io/badge/license-AGPL%20v3-blue.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/yourname/chimera)](https://goreportcard.com/report/github.com/yourname/chimera)
+[![Go Report Card](https://goreportcard.com/badge/github.com/stack-echo/chimera)](https://goreportcard.com/report/github.com/stack-echo/chimera)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 
 [![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_EN.md)
 [![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README.md)
 
-**Chimera** is a dual-core AI infrastructure built on **Go (Control Plane)** and **Python (Inference Runtime)**. It decouples business logic from AI capabilities, providing full-stack observability from the API gateway down to LLM inference.
+Chimera is an enterprise-grade AI infrastructure based on a dual-core architecture of **Go (Control Plane)** + **Python (Inference Runtime)**.
 
-In **v0.6.0**, we have transitioned to an **Open Core Architecture**. This major refactoring decouples the core capabilities from enterprise-specific features, making Chimera both an out-of-the-box lightweight RAG system and a scalable PaaS platform for complex enterprise scenarios.
+In the **v0.6.1 (Stable Cognitive)** version, we've achieved a leap from "flat vector retrieval" to "deep cognitive reasoning." By integrating vector, graph, and full-text retrieval engines, Chimera can understand the hierarchical structure of documents and perform logical reasoning like an expert.
 
----
+## ✨ v0.6.1 New Features: Cognitive Alignment
 
-## ✨ v0.6.0 Highlights: The Architecture Shift
+### 🧠 Three-way Hybrid Recall (3S Retrieval)
+- **Semantic Layer**: High-dimensional vector search based on **Qdrant**, capturing deep contextual meanings.
+- **Symbolic Layer**: Full-text retrieval based on **Elasticsearch**, solving the "entity linking" gap between colloquial queries and professional terminology.
+- **Logical Layer**: Knowledge graph based on **NebulaGraph**, completing logical chains through multi-hop associations.
 
-### 🧬 Open Core & Plugin Architecture
-- **Decoupling**: Business logic and AI core are strictly separated. The Python Runtime introduces **Factory Patterns** and **Dynamic Loaders** to support "One Codebase, Two Modes".
-- **Physical Isolation**: Enterprise-grade assets (e.g., Feishu/Lark integration, Knowledge Graph construction) are moved to the `enterprise/` directory, keeping the open-source repository clean.
-- **Service Layering**: The Go server introduces `DataSourceService` and `ChatService`, combined with a `Registry` mechanism for non-intrusive feature injection.
+### 🧬 High-Performance Distributed ETL
+- **Docling v2 Deep Parsing**: Supports **Tree-T** document hierarchy tree extraction, preserving Breadcrumbs path navigation.
+- **Table Propositionalization**: Transforms unstructured tables into linear declarative sentences, significantly improving retrieval hit rates for complex data.
+- **Gradient Disambiguation Algorithm**: Implements the $O(n)$ complexity entity alignment technology proposed by **BookRAG**, ensuring graph purity.
 
-### 🔬 Full-Stack Observability
-- **White-Box Inference**: Trace the agent's "Thought Chain" in real-time.
-- **Precise Metering**: Accurate token usage and latency statistics are collected in the Python Runtime and sent back to the Go Control Plane via gRPC for auditing.
-- **Distributed Tracing**: Integrated with **OpenTelemetry (SigNoz)** for cross-language (Go -> Python) performance analysis.
+### 🔬 Full-Chain Whiteboxing (XAI)
+- **Visual Reasoning**: Frontend real-time rendering of **ECharts knowledge topology graphs** and collapsible **Thought Chains**.
+- **Full-Chain Tracing**: TraceID cross-language transmission (Go ↔ Python), supporting second-level auditing of each Agent's inputs and outputs in **SigNoz**.
 
-### 🧠 Hybrid RAG
-- **Vector Search (OSS)**: High-performance retrieval based on **Qdrant**.
-- **GraphRAG (Enterprise)**: Knowledge Graph construction and retrieval based on **NebulaGraph**, designed for complex reasoning tasks.
+### ⚡ Hardware Performance Optimization
+- **GPU Computing Acceleration**: Deep adaptation to **RTX 4090/3060** (CUDA), vectorization performance improved by over 10x.
+- **Large-Scale Environment Optimization**: Tuned for 128GB memory workstations, supporting high-concurrency knowledge base synchronization.
 
 ---
 
 ## 🛠️ Feature Matrix
 
-| Feature | 🟢 Community Edition (OSS) | 🔵 Enterprise Edition (EE) |
+| Feature Module | 🟢 Community Edition | 🔵 Enterprise Edition |
 | :--- | :--- | :--- |
-| **Retrieval Model** | Vector Search (Qdrant) | **GraphRAG (Vector + Knowledge Graph)** |
-| **Data Sources** | Local Files (PDF/Markdown) | **Feishu / DingTalk / Web Crawler** |
-| **Doc Parsing** | Docling (OCR/Layout) | Docling + **Knowledge Extraction (NER/RE)** |
-| **Deployment** | Single-node Docker Compose | **High Availability / K8s** |
-| **Build System** | Standard Docker Images | **Layered Build (Core + Plugins)** |
+| **Retrieval Model** | Vector Retrieval (Qdrant) | **Three-way Hybrid Recall (Vector + Graph + ES)** |
+| **Alignment Strategy** | None | **Symbol-Topology Asynchronous Alignment (Entity Linking)** |
+| **Data Sources** | Local Files (PDF/Markdown) | **Feishu / DingTalk / Web Real-time Crawling** |
+| **Re-ranking Algorithm** | Basic Cosine Sorting | **Multi-dimensional Skyline Filtering (Pareto Optimal)** |
+| **Document Parsing** | Docling (Basic Mode) | **Tree-T Hierarchy Awareness + Table Propositionalization** |
+| **Computing Acceleration** | CPU Execution | **CUDA GPU Acceleration (4090/3060 Adapted)** |
 
 ---
 
-## 🏗️ Architecture & Directory
+## 🏗️ Directory Structure
 
 ```text
 Chimera/
-├── deploy/               # Docker Compose files (OSS & EE)
-├── server/               # [Go] Control Plane
-│   ├── cmd/
-│   │   ├── server/       # 🟢 OSS Entrypoint
-│   │   └── server-ee/    # 🔵 Enterprise Entrypoint (Plugin Injection)
-│   ├── internal/core/    #    Interfaces & Registry
-│   └── enterprise/       # 🔒 Closed-source Business Logic
-├── runtime/              # [Python] Inference Runtime
-│   ├── core/
-│   │   ├── managers/     #    Business Logic (ETL, Inference)
-│   │   └── connectors/   #    Base Connectors (File)
-│   ├── enterprise/       # 🔒 Closed-source Plugins (Feishu, Nebula)
-│   └── loader.py         #    Dynamic Plugin Loader
-└── web/                  # [Vue3] Frontend
+├── deploy/               # Production Docker orchestration & Cloudflare Tunnel config
+├── server/               # [Go] Control Plane (SaaS logic, JWT auth, Trace routing)
+│   ├── cmd/server-ee/    # 🔵 Enterprise entry (supports plugin auto-injection)
+│   └── internal/core/    # Core Registry interface definitions
+├── runtime/              # [Python] Inference Plane (LangGraph workflows, hybrid storage)
+│   ├── core/stores/      # Core vector store & ES adapters
+│   ├── enterprise/       # 🔒 Private core: NebulaGraph logic, ProPEX extraction Agent
+│   └── skills/           # Skyline re-ranker, Docling v2 parser
+└── web/                  # [Vue3 + Arco] Frontend with knowledge graph rendering
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Community Edition
-Ideal for individual developers or small teams. Lightweight, no Graph Database required.
-
+### 1. Start Infrastructure
+We recommend running on Ubuntu 22.04 native environment:
 ```bash
 cd deploy
-# Starts Postgres, Redis, MinIO, Qdrant, SigNoz, Server, Runtime
-docker-compose up -d
+# Start full enterprise infrastructure (includes ES, Nebula, Qdrant, SigNoz)
+./scripts/dev_infra.sh up ee
 ```
 
-### 2. Enterprise Edition
-For environments requiring SaaS integrations or GraphRAG. (Requires `enterprise` source code).
-
-```bash
-cd deploy
-# Starts full stack (includes NebulaGraph Cluster)
-# Note: Automatically uses Dockerfile.ee to build images with enterprise code
-docker-compose -f docker-compose-ee.yml up -d --build
-```
-
----
-
-## 💻 Local Development Guide
-
-### Python Runtime
-
+### 2. Start Computing Plane (Python Runtime)
 ```bash
 cd runtime
-# 1. Install dependencies
 pip install -r requirements.txt
-
-# 2. Start Service
-# loader.py automatically detects if the 'enterprise' directory exists.
-# If not found, it gracefully degrades to Core Mode.
 python main.py
 ```
-> **Note**: If you see `ℹ️ No enterprise directory found`, you are running in Community Mode.
+> **Tip**: After startup, seeing `✅ Nebula Space ... Schema initialized` indicates the graph engine is ready.
 
-### Go Server
-
+### 3. Start Control Plane (Go Server)
 ```bash
 cd server
-# 1. Install dependencies
-go mod download
-
-# 2. Start OSS Version (Clean Mode)
-go run cmd/server/main.go
-
-# 3. Start Enterprise Version (Injected Mode)
-# Prerequisite: server/enterprise directory must exist
 go run cmd/server-ee/main.go
 ```
-> **Note**: Enterprise startup logs will show `🔓 [Enterprise] Loading Feishu Plugin...`.
 
 ---
 
-## 📈 Roadmap
+## 📈 Version Evolution
 
 | Version | Milestone | Status |
 | :--- | :--- | :--- |
-| **v0.4.0** | Multi-tenancy & Isolation | ✅ |
-| **v0.5.0** | Docling Integration & SigNoz Observability | ✅ |
-| **v0.6.0** | **Commercial Refactoring (Current)** <br> - Open Core Architecture <br> - Pluggable Connectors & Stores <br> - Physical Code Isolation | 🎉 |
-| **v0.7.0** | **Memory & Permissions (Planning)** <br> - Redis Session (Long-term Memory) <br> - RBAC System | 🚧 |
+| **v0.5.0** | Introduced GraphRAG framework & SigNoz monitoring | ✅ |
+| **v0.6.0** | **Open Core architecture refactoring**, physically isolating enterprise plugins | ✅ |
+| **v0.6.1** | **Stable Cognitive Alignment**: ES three-way recall, Skyline filtering, GPU acceleration | 🎉 |
+| **v0.7.0** | **Memory Enhancement (Planning)**: Long-term conversation memory based on Agentic-KGR | 🚧 |
 
 ## 📄 License
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL v3)**.
+This project is open-sourced under the **GNU Affero General Public License v3.0 (AGPL v3)**.
 
-*   **Allowed**: Free to use, modify, and learn.
-*   **Obligation**: If you provide a service (SaaS) over a network using this software, you must make your modified source code available to users.
-*   **Commercial License**: For closed-source commercial use or access to Enterprise Edition source code, please contact the author for authorization.
+*   **Requirement**: If you provide services (SaaS) based on this project over a network, you must open-source your modified code.
+*   **Commercial License**: For closed-source commercial use, private deployment, or to obtain enterprise core code, contact `stack-echo` for authorization.
 
 ---
 
-## 🤝 Contribution
+## 🤝 Contribution & Support
 
-Issues and Pull Requests are welcome! For new data source connectors, please follow the interface defined in `core/connectors/base.py`.
-
-*   **Core Features**: Submit to `server/internal` or `runtime/core`.
-*   **New Plugins**: Please open an Issue for discussion first.
+*   **Core Features**: Please submit PRs to `server/internal` or `runtime/core`.
+*   **Online Demo**: [chat.stackecho.blog](https://chat.stackecho.blog) (requires exclusive Token).
+*   **Runner API**: [api.stackecho.blog](https://api.stackecho.blog/api/v1).

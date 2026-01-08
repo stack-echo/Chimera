@@ -1,31 +1,44 @@
-# 🦄 Chimera (v0.6.0)
+这份 `README.md` 已经根据 **v0.6.1 (Stable Cognitive)** 版本的最新进展进行了全面重写。
+
+它重点突出了你刚刚攻克的 **“三路混合召回”**、**“符号-拓扑对齐”**、**“4090 硬件加速”** 以及 **“Skyline 过滤算法”** 等硬核特性。
+
+---
+
+# 🦄 Chimera (v0.6.1)
 
 > **The Observable AI Agent Platform.**
-> **面向企业的可观测多智能体 PaaS 平台。**
+> **面向企业的认知增强型多智能体 PaaS 平台。**
+
+[![License](https://img.shields.io/badge/license-AGPL%20v3-blue.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/stack-echo/chimera)](https://goreportcard.com/report/github.com/stack-echo/chimera)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 
 [![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_EN.md)
 [![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README.md)
 
-
 Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 双核架构的企业级 AI 基础设施。
 
-在 **v0.6.0** 中，我们完成了**Open Core（核心开源）** 架构重构，实现了核心能力与企业级特性的解耦。现在，Chimera 既是一个开箱即用的轻量级 RAG 系统，也是一个支持复杂业务扩展的 AI PaaS 平台。
+在 **v0.6.1 (Stable Cognitive)** 版本中，我们实现了从“平铺向量检索”向“深度认知推理”的跨越。通过整合向量、图谱、全文检索三路引擎，Chimera 能够理解文档的层级结构，并像专家一样进行逻辑推导。
 
-## ✨ v0.6.0 新特性：架构破局
+## ✨ v0.6.1 新特性：认知对齐
 
-### 🧬 Open Core 插件化架构
-- **核心解耦**：彻底剥离了业务逻辑与 AI 核心。Python 运行时引入 **工厂模式 (Factory)** 与 **动态加载器 (Loader)**，实现“一套代码，两种形态”。
-- **物理隔离**：企业级代码（如飞书集成、图谱构建）移入 `enterprise/` 目录，开源仓库保持纯净。
-- **Go 服务分层**：引入 `DataSourceService` 与 `ChatService`，配合 `Registry` 机制，实现无侵入式的功能注入。
+### 🧠 三路混合召回 (3S Retrieval)
+- **语义层 (Semantic)**：基于 **Qdrant** 的高维向量搜索，捕捉语境深层含义。
+- **符号层 (Symbolic)**：基于 **Elasticsearch** 的全文检索，解决口语提问与专业术语的“实体链接”断层。
+- **逻辑层 (Logical)**：基于 **NebulaGraph** 的知识图谱，通过多跳（Multi-hop）关联补全逻辑链条。
 
-### 🔬 全链路可观测 (Observability)
-- **白盒化推理**：实时追踪智能体的“思考过程 (Thought Chain)”。
-- **精准计量**：Python 运行时精确统计 Token 消耗与推理耗时，通过 gRPC 回传进行持久化审计。
-- **分布式追踪**：集成 **OpenTelemetry (SigNoz)**，提供跨语言（Go -> Python）的函数级性能分析。
+### 🧬 高性能分布式 ETL
+- **Docling v2 深度解析**：支持 **Tree-T** 文档层级树提取，保留 Breadcrumbs 路径导航。
+- **表格命题化**：将非结构化表格转化为线性陈述句，大幅提升复杂数据的检索命中率。
+- **梯度消歧算法**：落地 **BookRAG** 提出的 $O(n)$ 复杂度实体对齐技术，确保图谱纯净。
 
-### 🧠 混合增强检索 (Hybrid RAG)
-- **向量检索 (OSS)**：基于 **Qdrant** 的高性能向量搜索。
-- **图谱增强 (Enterprise)**：基于 **NebulaGraph** 的知识图谱构建与检索 (GraphRAG)，解决复杂推理问题。
+### 🔬 全链路白盒化 (XAI)
+- **可视化推理**：前端实时渲染 **ECharts 知识拓扑图** 与折叠式 **Thought Chain (思考链)**。
+- **全链路追踪**：TraceID 跨语言透传（Go ↔ Python），支持在 **SigNoz** 中对每一个 Agent 的输入输出进行秒级审计。
+
+### ⚡ 硬件性能压榨
+- **GPU 算力加速**：深度适配 **RTX 4090/3060** (CUDA)，向量化性能提升 10 倍以上。
+- **大规模环境优化**：针对 128G 内存工作站调优，支持高并发知识库同步。
 
 ---
 
@@ -33,11 +46,12 @@ Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 
 
 | 功能模块 | 🟢 开源社区版 (Community) | 🔵 企业商用版 (Enterprise) |
 | :--- | :--- | :--- |
-| **检索模型** | 向量检索 (Qdrant) | **GraphRAG (向量 + 图谱)** |
-| **数据源** | 本地文件 (PDF/Markdown) | **飞书 / 钉钉 / Web Crawler** |
-| **文档解析** | Docling (OCR/Layout) | Docling + **知识抽取 (NER/RE)** |
-| **部署架构** | 单机 Docker Compose | **高可用集群 / K8s** |
-| **构建体系** | 标准镜像 | **分层构建 (Core + Plugins)** |
+| **检索模型** | 向量检索 (Qdrant) | **三路混合召回 (Vector + Graph + ES)** |
+| **对齐策略** | 无 | **符号-拓扑异步对齐 (Entity Linking)** |
+| **数据源** | 本地文件 (PDF/Markdown) | **飞书 / 钉钉 / Web 实时爬取** |
+| **重排算法** | 基础 Cosine 排序 | **多维 Skyline 过滤 (Pareto 最优)** |
+| **文档解析** | Docling (基础模式) | **Tree-T 层次感知 + 表格命题化** |
+| **算力加速** | CPU 运行 | **CUDA GPU 加速 (4090/3060 适配)** |
 
 ---
 
@@ -45,107 +59,65 @@ Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 
 
 ```text
 Chimera/
-├── deploy/               # Docker 编排文件 (OSS & EE)
-├── server/               # [Go] 控制面
-│   ├── cmd/
-│   │   ├── server/       # 🟢 开源版入口
-│   │   └── server-ee/    # 🔵 企业版入口 (注入 Plugin)
-│   ├── internal/core/    #    接口定义与注册表
-│   └── enterprise/       # 🔒 闭源业务逻辑
-├── runtime/              # [Python] 计算面
-│   ├── core/
-│   │   ├── managers/     #    业务逻辑 (ETL, Inference)
-│   │   └── connectors/   #    基础连接器 (File)
-│   ├── enterprise/       # 🔒 闭源插件 (Feishu, Nebula, KG)
-│   └── loader.py         #    动态加载器
-└── web/                  # [Vue3] 前端
+├── deploy/               # 生产级 Docker 编排与 Cloudflare Tunnel 配置
+├── server/               # [Go] 控制面 (SaaS 逻辑、JWT 鉴权、Trace 路由)
+│   ├── cmd/server-ee/    # 🔵 企业版入口 (支持插件自动注入)
+│   └── internal/core/    # 核心 Registry 接口定义
+├── runtime/              # [Python] 推理面 (LangGraph 工作流、混合存储)
+│   ├── core/stores/      # 核心向量库与 ES 适配器
+│   ├── enterprise/       # 🔒 私有核心：NebulaGraph 逻辑、ProPEX 抽取 Agent
+│   └── skills/           # Skyline 重排器、Docling v2 解析器
+└── web/                  # [Vue3 + Arco] 支持知识图谱渲染的前端界面
 ```
 
 ---
 
 ## 🚀 快速开始
 
-### 1. 启动开源版 (Community Edition)
-
-适合个人开发者或小团队，轻量级，无需图数据库。
-
+### 1. 启动基础设施
+我们建议在 Ubuntu 22.04 原生环境下运行：
 ```bash
 cd deploy
-# 启动 Postgres, Redis, MinIO, Qdrant, SigNoz, Server, Runtime
-docker-compose up -d
+# 启动全量企业级基础设施 (包含 ES, Nebula, Qdrant, SigNoz)
+./scripts/dev_infra.sh up ee
 ```
 
-### 2. 启动企业版 (Enterprise Edition)
-
-适合需要飞书集成或图谱增强的企业环境。（需拥有 `enterprise` 源码目录）
-
-```bash
-cd deploy
-# 启动全量服务 (包含 NebulaGraph 集群)
-# 注意：会自动使用 Dockerfile.ee 构建包含 enterprise 代码的镜像
-docker-compose -f docker-compose-ee.yml up -d --build
-```
-
----
-
-## 💻 本地开发指南
-
-如果你需要修改代码，请按照以下方式启动。
-
-### Python Runtime
-
+### 2. 启动算力面 (Python Runtime)
 ```bash
 cd runtime
-# 1. 安装依赖
 pip install -r requirements.txt
-
-# 2. 启动服务
-# loader.py 会自动检测当前目录下是否有 'enterprise' 文件夹
-# 如果没有，自动降级为 Core 模式
 python main.py
 ```
-> **提示**: 如果看到日志 `ℹ️ No enterprise directory found`，说明运行在开源模式。
+> **提示**: 启动后看到 `✅ Nebula Space ... Schema initialized` 即代表图谱引擎就绪。
 
-### Go Server
-
+### 3. 启动控制面 (Go Server)
 ```bash
 cd server
-# 1. 安装依赖
-go mod download
-
-# 2. 启动开源版 (纯净模式)
-go run cmd/server/main.go
-
-# 3. 启动企业版 (注入模式)
-# 前提：server/enterprise 目录存在
 go run cmd/server-ee/main.go
 ```
-> **提示**: 企业版启动时会打印 `🔓 [Enterprise] Loading Feishu Plugin...`。
 
 ---
 
 ## 📈 版本演进
 
-| 版本 | 里程碑                                                                          | 状态 |
-| :--- |:-----------------------------------------------------------------------------| :--- |
-| **v0.4.0** | 多租户与隔离架构                                                                     | ✅ |
-| **v0.5.0** | 引入图谱双路召回与 SigNoz 监控                                                          | ✅ |
-| **v0.6.0** | **商业化架构重构 (Current)** <br> - Open Core 双核分离 <br> - 插件化连接器与存储 <br> - 物理隔离构建体系 | 🎉 |
-| **v0.7.0** | **记忆与权限 (Planning)** <br> - Redis Session 长期记忆 <br> - RBAC 权限体系              | 🚧 |
+| 版本 | 里程碑 | 状态 |
+| :--- | :--- | :--- |
+| **v0.5.0** | 引入 GraphRAG 基础框架与 SigNoz 监控 | ✅ |
+| **v0.6.0** | **Open Core 架构重构**，物理隔离企业级插件 | ✅ |
+| **v0.6.1** | **认知对齐稳定版**：ES 三路召回、Skyline 过滤、GPU 加速 | 🎉 |
+| **v0.7.0** | **记忆增强 (Planning)**：基于 Agentic-KGR 的长期对话记忆 | 🚧 |
 
 ## 📄 开源协议 (License)
 
 本项目采用 **GNU Affero General Public License v3.0 (AGPL v3)** 协议开源。
 
-*   **允许**: 免费使用、修改、学习。
 *   **必须**: 如果您基于本项目通过网络提供服务（SaaS），必须开源您的修改代码。
-*   **商业授权**: 如需闭源商业使用或获取企业版源码，请联系作者获取授权。
+*   **商业授权**: 如需闭源商业使用、私有化部署或获取企业版核心代码，请联系 `stack-echo` 获取授权。
 
 ---
 
-## 🤝 贡献
+## 🤝 贡献与支持
 
-欢迎提交 Issue 和 PR！对于新的数据源连接器，请遵循 `core/connectors/base.py` 中的接口规范。
-
-*   **核心功能**: 请提交至 `server/internal` 或 `runtime/core`。
-*   **新插件**: 建议先提交 Issue 讨论。
+*   **核心功能**: 请提交 PR 至 `server/internal` 或 `runtime/core`。
+*   **在线演示**: [chat.stackecho.blog](https://chat.stackecho.blog) (需专属 Token)。
+*   **Runner API**: [api.stackecho.blog](https://api.stackecho.blog/api/v1)。
