@@ -8,110 +8,121 @@ from typing import Generator, Dict, Any, Optional
 from core.llm.embedding import EmbeddingModel
 from core.stores.qdrant_store import QdrantStore
 from core.connectors.base import ConnectorFactory
+from core.managers.kg_registry import KGRegistry
 
 logger = logging.getLogger(__name__)
 
 class ETLManager:
     def __init__(self, qdrant_store: QdrantStore, nebula_store: Any = None):
-        """
-        初始化 ETL 管理器
-        :param qdrant_store: 向量数据库实例 (必须)
-        :param nebula_store: 图数据库实例 (可选，如果为 None 则不构建图谱)
-        """
         self.qdrant = qdrant_store
         self.nebula = nebula_store
         self.embed_model = EmbeddingModel.get_instance()
+        self.is_kg_active = False
 
-        # 🔥 动态初始化 KG Builder (企业版功能)
-        self.kg_builder = None
         if self.nebula:
-            try:
-                # 尝试导入 KG Builder
-                # 注意：在 Phase 3 物理拆分后，这个路径可能会变，或者通过 enterprise_loader 注册
-                # 这里暂时保持原有路径，但加上 try-except 以防文件被移走
-                from workflows.kg_builder.graph import MultiAgentKGBuilder
-                self.kg_builder = MultiAgentKGBuilder(self.nebula)
-                logger.info("🧠 [ETL] Knowledge Graph Builder activated.")
-            except ImportError:
-                logger.warning("⚠️ [ETL] Enterprise KG Builder module not found.")
-            except Exception as e:
-                logger.error(f"❌ [ETL] KG Builder init failed: {e}")
+            self._init_kg_status()
+
+    def _init_kg_status(self):
+        """
+        不再需要 try-import，直接检查注册表
+        """
+        if KGRegistry.is_active():
+            self.is_kg_active = True
+            logger.info("🔓 [ETL] Enterprise GraphRAG Pipeline linked via Registry.")
+        else:
+            logger.info("ℹ️ [ETL] KG Agents not registered. Skipping KG construction.")
+            self.nebula = None
 
     def sync_datasource(self, kb_id: int, source_id: int, source_type: str, config_json: str) -> Generator[Dict[str, Any], None, None]:
         """
-        执行数据源同步任务 (生成器)
-        :yield: 进度信息 {"chunks": int, "pages": int}
+        执行同步任务：向量入库 + (可选) 图谱入库
         """
         start_time = time.time()
         logger.info(f"🔄 [ETL Start] KB={kb_id} Source={source_id} Type={source_type}")
 
         try:
             config = json.loads(config_json)
-
-            # 1. 获取连接器
             connector_cls = ConnectorFactory.get_connector(source_type)
             if not connector_cls:
-                raise ValueError(f"Unsupported/Missing connector type: '{source_type}'. Please check Enterprise License.")
+                raise ValueError(f"Unsupported connector: {source_type}")
 
             connector = connector_cls(kb_id, source_id, config)
-
             chunks_buffer = []
-            total_chunks = 0
+            total_count = 0
 
-            # 2. 遍历文档切片
             for chunk in connector.load():
-                # 生成全局唯一 ID
                 chunk_uuid = str(uuid.uuid4())
-
-                # 向量化
                 vector = self.embed_model.encode(chunk.content)
 
-                # 准备 Qdrant Payload
                 payload = {
-                    "content": chunk.content,
-                    "kb_id": kb_id,
-                    "source_id": source_id,
-                    **chunk.metadata
-                }
-
-                chunks_buffer.append({
                     "id": chunk_uuid,
                     "vector": vector,
-                    "payload": payload
-                })
+                    "payload": {
+                        "content": chunk.content,
+                        "kb_id": kb_id,
+                        "source_id": source_id,
+                        **chunk.metadata
+                    }
+                }
+                chunks_buffer.append(payload)
 
-                # 3. 触发图谱构建 (如果启用了)
-                if self.kg_builder:
-                    try:
-                        # 这是一个耗时操作，目前同步执行
-                        self.kg_builder.run(chunk.content, chunk.metadata, chunk_uuid)
-                    except Exception as kg_e:
-                        logger.warning(f"⚠️ KG Build failed for chunk {chunk_uuid}: {kg_e}")
+                # --- 运行图谱流水线 ---
+                if self.nebula and self.is_kg_active:
+                    self._run_kg_pipeline_safe(chunk, chunk_uuid)
 
-                # 4. 批处理写入向量库 (每 50 条)
-                if len(chunks_buffer) >= 50:
+                # --- 批量写入 Qdrant (每 10 条) ---
+                if len(chunks_buffer) >= 10:
                     self.qdrant.upsert_chunks(chunks_buffer)
-                    total_chunks += len(chunks_buffer)
+                    total_count += len(chunks_buffer)
                     chunks_buffer = []
-                    # 实时汇报进度 (可选)
-                    # yield {"chunks": total_chunks}
+                    yield {"chunks": total_count, "status": "syncing"}
 
-            # 写入剩余 buffer
+            # 写入剩余部分
             if chunks_buffer:
                 self.qdrant.upsert_chunks(chunks_buffer)
-                total_chunks += len(chunks_buffer)
+                total_count += len(chunks_buffer)
 
-            duration = time.time() - start_time
-            logger.info(f"✅ [ETL Done] Chunks={total_chunks} Time={duration:.2f}s")
-
-            # 返回最终统计
-            yield {
-                "success": True,
-                "chunks": total_chunks,
-                "pages": 0  # 如果 connector 能提供总页数更好
-            }
+            logger.info(f"💾 总计向 Qdrant 写入 {total_count} 条向量数据")
+            yield {"success": True, "chunks": total_count}
 
         except Exception as e:
             logger.error(f"❌ [ETL Error] {str(e)}")
             logger.error(traceback.format_exc())
-            raise e  # 抛出异常由 Service 层捕获封装 gRPC 错误
+            raise e
+
+    def _run_kg_pipeline_safe(self, chunk, chunk_id: str):
+        """
+        执行流水线时，直接从注册表取 Agent
+        """
+        if not self.nebula or not KGRegistry.is_active():
+            return
+
+        try:
+            logger.info(f"🚀 [KG-Pipeline] 开始处理切片: {chunk_id[:8]}...")
+            # 从注册表动态获取 Agent 实例
+            extractor = KGRegistry.get_agent("extractor")
+            inspector = KGRegistry.get_agent("inspector")
+            resolver = KGRegistry.get_agent("resolution")
+            es_indexer = KGRegistry.get_agent("es_indexer")
+            if es_indexer:
+                for ent in final_kb['entities']:
+                    es_indexer.index_entity(ent['name'], vid)
+
+            if not all([extractor, inspector, resolver]):
+                return
+
+            # A. 联合抽取
+            breadcrumb = chunk.metadata.get("breadcrumb", "")
+            raw_kb = extractor.run(chunk.content, breadcrumb)
+
+            # B. 质量审查
+            refined_kb = inspector.run(chunk.content, raw_kb)
+
+            # C. 梯度消歧
+            final_kb = resolver.run(refined_kb.get('entities', []), refined_kb.get('relations', []))
+
+            # D. 入库
+            self.nebula.upsert_graph(final_kb, chunk_id)
+
+        except Exception as ex:
+            logger.warning(f"⚠️ [KG Pipeline] Failed: {ex}")

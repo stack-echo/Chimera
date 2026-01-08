@@ -25,33 +25,38 @@ class Config:
 
     # 1. NebulaGraph 配置
     NEBULA_HOST = os.getenv("NEBULA_HOST", "127.0.0.1")
-    NEBULA_PORT = int(os.getenv("NEBULA_PORT", 9669))
+    NEBULA_PORT = int(os.getenv("NEBULA_PORT", 29669))
     NEBULA_USER = os.getenv("NEBULA_USER", "root")
     NEBULA_PASSWORD = os.getenv("NEBULA_PASSWORD", "nebula")
     NEBULA_SPACE = os.getenv("NEBULA_SPACE", "chimera_kb")
 
     # 2. Qdrant 配置
     QDRANT_HOST = os.getenv("QDRANT_HOST", "127.0.0.1")
-    QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
+    QDRANT_PORT = int(os.getenv("QDRANT_PORT", 26333))
 
     # 3. Redis 配置
     REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
-    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+    REDIS_PORT = int(os.getenv("REDIS_PORT", 26379))
 
     # 🔥 4. MinIO 配置 (新增)
     # 注意：本地运行时如果连 Docker 里的 MinIO，host 应该是 localhost:9000
-    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:29000")
     MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "chimera_minio")
     MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "chimera_minio_secret")
     # 桶名称要和 Go 端保持一致
     MINIO_BUCKET = os.getenv("MINIO_BUCKET", "chimera-docs")
 
-    # --- 业务参数 ---
+    ES_HOST = os.getenv("ES_HOST", "127.0.0.1")
+    ES_PORT = int(os.getenv("ES_PORT", 29200))
+
+# --- 业务参数 ---
     CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 500))
     CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 50))
 
     @staticmethod
     def validate():
+        if not Config.ES_HOST:
+            print("ℹ️ ES_HOST not set, running without Full-text search support.")
         required_keys = {
             "DEEPSEEK_API_KEY": Config.DEEPSEEK_API_KEY,
             # "NEBULA_HOST": Config.NEBULA_HOST

@@ -37,10 +37,13 @@ type AppStatsReq struct {
 
 // AppStatsResp 统计响应
 type AppStatsResp struct {
-	TotalCalls    int64         `json:"total_calls"`
-	TotalTokens   int64         `json:"total_tokens"`
-	AvgDurationMs int64         `json:"avg_duration_ms"`
-	DailyStats    []DailyMetric `json:"daily_stats"`
+	TotalCalls       int64         `json:"total_calls"`
+	TotalTokens      int64         `json:"total_tokens"`
+	AvgDurationMs    int64         `json:"avg_duration_ms"`
+	TotalChunks      int64         `json:"total_chunks"`      // 总分片数
+	KnowledgeDensity float64       `json:"knowledge_density"` // 平均每个分片提取出的实体/关系数
+	GraphTokens      int64         `json:"graph_tokens"`      // 专门用于图谱构建消耗的 Token
+	DailyStats       []DailyMetric `json:"daily_stats"`
 }
 
 type DailyMetric struct {

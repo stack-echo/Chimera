@@ -131,10 +131,26 @@ func (s *LogService) GetAppStats(ctx context.Context, req dto.AppStatsReq) (*dto
 		})
 	}
 
+	// 3. 统计知识密度 (从 DataSource 表汇总)
+	var dsStats struct {
+		SumChunks int64
+		SumNodes  int64 // 假设我们在 model 里增加了 chunk_count 和知识计数
+	}
+	s.Data.DB.Model(&model.DataSource{}).
+		Select("sum(chunk_count) as sum_chunks, sum(knowledge_count) as sum_nodes").
+		Scan(&dsStats)
+
+	density := 0.0
+	if dsStats.SumChunks > 0 {
+		density = float64(dsStats.SumNodes) / float64(dsStats.SumChunks)
+	}
+
 	return &dto.AppStatsResp{
-		TotalCalls:    totalStats.CountCalls,
-		TotalTokens:   totalStats.SumTokens,
-		AvgDurationMs: avgDuration,
-		DailyStats:    dailyMetrics,
+		TotalCalls:       totalStats.CountCalls,
+		TotalTokens:      totalStats.SumTokens,
+		AvgDurationMs:    avgDuration,
+		TotalChunks:      dsStats.SumChunks,
+		KnowledgeDensity: density,
+		DailyStats:       dailyMetrics,
 	}, nil
 }

@@ -11,6 +11,7 @@ from core.telemetry.tracing import setup_otel
 
 # Core Stores
 from core.stores.qdrant_store import QdrantStore
+import core.connectors.file
 
 # Service & Loader
 from service.runtime_service import ChimeraRuntimeService

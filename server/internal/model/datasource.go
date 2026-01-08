@@ -25,7 +25,8 @@ type DataSource struct {
 	ErrorMsg string `json:"error_msg"`
 
 	// 统计数据
-	ChunkCount   int       `json:"chunk_count"`
-	PageCount    int       `json:"page_count"`
-	LastSyncTime time.Time `json:"last_sync_time"`
+	ChunkCount     int       `json:"chunk_count"`
+	PageCount      int       `json:"page_count"`
+	LastSyncTime   time.Time `json:"last_sync_time"`
+	KnowledgeCount int       `json:"knowledge_count"`
 }

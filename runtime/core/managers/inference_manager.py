@@ -93,6 +93,12 @@ class InferenceManager:
                     usage_stats["completion_tokens"] += u.get("completion_tokens", 0)
                     usage_stats["total_tokens"] += u.get("total_tokens", 0)
 
+                elif event["type"] == "subgraph":
+                    yield {
+                        "type": "subgraph",
+                        "payload": event["payload"]
+                    }
+
         except Exception as e:
             logger.error(f"❌ [Inference] Error: {str(e)}")
             logger.error(traceback.format_exc())

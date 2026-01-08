@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: chimera_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: chimera_user
+      POSTGRES_PASSWORD: chimera_secret
+      POSTGRES_DB: chimera_main
+    ports:
+      - "25432:5432"
+    volumes:
+      - chimera_postgres_data:/var/lib/postgresql/data
+    networks:
+      - chimera_net
+
+  minio:
+    image: minio/minio:RELEASE.2023-10-07T15-07-38Z
+    container_name: chimera_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: chimera_minio
+      MINIO_ROOT_PASSWORD: chimera_minio_secret
+    ports:
+      - "29000:9000"
+      - "29001:9001"
+    volumes:
+      - chimera_minio_data:/data
+    networks:
+      - chimera_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: chimera_redis
+    restart: always
+    ports:
+      - "26379:6379"
+    volumes:
+      - chimera_redis_data:/data
+    networks:
+      - chimera_net
+    command: redis-server --appendonly yes --requirepass chimera_secret
+
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: chimera_qdrant
+    restart: always
+    ports:
+      - "26333:6333"
+      - "26334:6334"
+    volumes:
+      - chimera_qdrant_data:/qdrant/storage
+    networks:
+      - chimera_net
+
+  # --- NebulaGraph 修复版 ---
+
+  nebula-metad:
+    image: vesoft/nebula-metad:v3.6.0
+    container_name: chimera_nebula_metad
+    restart: on-failure
+    environment:
+      USER: root
+      TZ: Asia/Shanghai
+    # 修正 data_path 确保持久化
+    command:
+      - --meta_server_addrs=chimera_nebula_metad:9559
+      - --local_ip=chimera_nebula_metad
+      - --ws_ip=chimera_nebula_metad
+      - --port=9559
+      - --ws_http_port=19559
+      - --data_path=/usr/local/nebula/data/meta # 👈 指向挂载点
+    volumes:
+      - chimera_nebula_meta_data:/usr/local/nebula/data # 👈 独立卷
+    networks:
+      - chimera_net
+
+  nebula-storaged:
+    image: vesoft/nebula-storaged:v3.6.0
+    container_name: chimera_nebula_storaged
+    restart: on-failure
+    environment:
+      USER: root
+      TZ: Asia/Shanghai
+    # 修正 data_path
+    command:
+      - --meta_server_addrs=chimera_nebula_metad:9559
+      - --local_ip=chimera_nebula_storaged
+      - --ws_ip=chimera_nebula_storaged
+      - --port=9779
+      - --ws_http_port=19779
+      - --data_path=/usr/local/nebula/data/storage # 👈 指向挂载点
+    depends_on:
+      - nebula-metad
+    volumes:
+      - chimera_nebula_storage_data:/usr/local/nebula/data # 👈 独立卷
+    networks:
+      - chimera_net
+
+  nebula-graphd:
+    image: vesoft/nebula-graphd:v3.6.0
+    container_name: chimera_nebula_graphd
+    restart: on-failure
+    environment:
+      USER: root
+      TZ: Asia/Shanghai
+    ports:
+      - "29669:9669"
+      - "39669:19669"
+    command:
+      - --meta_server_addrs=chimera_nebula_metad:9559
+      - --local_ip=chimera_nebula_graphd
+      - --ws_ip=chimera_nebula_graphd
+      - --port=9669
+      - --ws_http_port=19669
+    depends_on:
+      - nebula-metad
+      - nebula-storaged
+    networks:
+      - chimera_net
+
+  elasticsearch:
+    # 建议使用 7.17.x 版本，稳定性极佳且资源占用适中
+    image: elasticsearch:7.17.10
+    container_name: chimera_es
+    environment:
+      - discovery.type=single-node
+      # 针对 128G 内存的优化：设置 8G 堆内存
+      - "ES_JAVA_OPTS=-Xms8g -Xmx8g"
+      - bootstrap.memory_lock=true
+      - TZ=Asia/Shanghai
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "29200:9200"
+    volumes:
+      - chimera_es_data:/usr/share/elasticsearch/data
+    networks:
+      - chimera_net
+
+networks:
+  chimera_net:
+    driver: bridge
+
+volumes:
+  chimera_postgres_data:
+  chimera_minio_data:
+  chimera_redis_data:
+  chimera_qdrant_data:
+  chimera_nebula_meta_data:    # 拆分卷
+  chimera_nebula_storage_data: # 拆分卷
+  chimera_es_data:

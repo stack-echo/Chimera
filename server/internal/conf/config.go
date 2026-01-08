@@ -52,7 +52,7 @@ func LoadConfig() *Config {
 	// Postgres (新)
 	// 格式: postgres://user:password@host:port/dbname?sslmode=disable
 	v.SetDefault("DATA_DB_DRIVER", "postgres")
-	v.SetDefault("DATA_DB_SOURCE", "postgres://chimera_user:chimera_secret@localhost:5432/chimera_main?sslmode=disable")
+	v.SetDefault("DATA_DB_SOURCE", "postgres://chimera_user:chimera_secret@localhost:25432/chimera_main?sslmode=disable")
 
 	// Redis (新密码)
 	v.SetDefault("DATA_REDIS_ADDR", "localhost:6379")

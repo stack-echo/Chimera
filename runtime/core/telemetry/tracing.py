@@ -1,5 +1,7 @@
 import functools
 import json
+import os
+
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 from opentelemetry.sdk.resources import Resource
@@ -8,45 +10,41 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from google.protobuf.message import Message
 from google.protobuf.json_format import MessageToDict
+import collections
 
-# --- OTel 初始化 ---
-resource = Resource(attributes={
-    "service.name": "chimera-agents-runtime",
-    "service.version": "v0.5.0"
-})
-provider = TracerProvider(resource=resource)
-# 默认发送到 SigNoz 的 4317 端口
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True))
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
+OTEL_ENABLED = os.getenv("ENABLE_OTEL", "true").lower() == "true"
 
-tracer = trace.get_tracer("chimera.runtime")
+def setup_otel(service_name="chimera-brain-python", endpoint="http://localhost:4317"):
+    if not OTEL_ENABLED:
+        print("ℹ️ OTel tracing is disabled.")
+        return
 
-def setup_otel(service_name="chimera-agents-runtime", endpoint="http://localhost:4317"):
-    """
-    初始化 OpenTelemetry 并在全局注册。
-    这个函数需要在 main.py 启动时最先调用。
-    """
-    # 1. 定义资源信息（显示在 SigNoz 的服务列表里）
-    resource = Resource(attributes={
-        "service.name": service_name
-    })
-
-    # 2. 创建 Tracer 提供者
+    resource = Resource(attributes={"service.name": service_name, "service.version": "v0.6.0"})
     provider = TracerProvider(resource=resource)
 
-    # 3. 配置导出器（指向 SigNoz 的数据接收端口）
-    # insecure=True 是因为本地 SigNoz 默认没开 TLS
-    otlp_exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
+    try:
+        # 增加超时控制，防止 SigNoz 连不上卡死系统
+        exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True, timeout=2)
+        processor = BatchSpanProcessor(exporter)
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
+        print(f"✅ OTel initialized: exporting to {endpoint}")
+    except Exception as e:
+        print(f"⚠️ OTel Init Failed: {e}")
 
-    # 4. 添加处理器（Batch 模式性能更好）
-    span_processor = BatchSpanProcessor(otlp_exporter)
-    provider.add_span_processor(span_processor)
-
-    # 5. 设置全局全局追踪器
-    trace.set_tracer_provider(provider)
-
-    print(f"✅ OpenTelemetry initialized for {service_name}, exporting to {endpoint}")
+def convert_to_serializable(obj):
+    """
+    递归转换所有对象为原生 Python 类型
+    """
+    if isinstance(obj, Message):
+        return MessageToDict(obj)
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    if isinstance(obj, collections.abc.Mapping):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, collections.abc.Iterable) and not isinstance(obj, (bytes, str)):
+        return [convert_to_serializable(item) for item in obj]
+    return str(obj)
 
 def trace_agent(agent_name: str):
     """
@@ -55,14 +53,14 @@ def trace_agent(agent_name: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
+            if not OTEL_ENABLED:
+                return func(self, *args, **kwargs)
+
             # 1. 精准提取 Payload (跳过 self)
             raw_input = args[0] if args else kwargs
 
             # 2. 转换 Protobuf 对象为可序列化字典
-            if isinstance(raw_input, Message):
-                serializable_input = MessageToDict(raw_input)
-            else:
-                serializable_input = raw_input
+            serializable_input = convert_to_serializable(raw_input)
 
             with tracer.start_as_current_span(f"🤖 Agent:{agent_name}") as span:
                 span.set_attribute("chimera.agents.name", agent_name)
