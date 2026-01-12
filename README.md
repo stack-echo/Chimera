@@ -10,7 +10,7 @@
 [![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_EN.md)
 [![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README.md)
 
-Chimera 旨在解决企业大模型应用中“幻觉率高”、“专业知识理解浅”及“过程不可审计”的痛点。我们不只是在做 RAG，而是在构建文档的“数字认知孪生”。
+Chimera 是一个双核架构的rag平台，旨在解决企业大模型应用中“幻觉率高”、“专业知识理解浅”及“过程不可审计”的痛点。我们不只是在做 RAG，而是在构建文档的“数字认知孪生”。
 
 ## 🎯 核心愿景：三大基座计划
 
