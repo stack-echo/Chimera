@@ -28,5 +28,7 @@ type DataSource struct {
 	ChunkCount     int       `json:"chunk_count"`
 	PageCount      int       `json:"page_count"`
 	LastSyncTime   time.Time `json:"last_sync_time"`
-	KnowledgeCount int       `json:"knowledge_count"`
+	KnowledgeCount int     `json:"knowledge_count"`    // 总实体数
+	LinkageRate    float64 `json:"linkage_rate"`       // 实体对齐率 (0-1)
+	VisualWeight   float64 `json:"visual_weight"`      // 视觉知识占比
 }

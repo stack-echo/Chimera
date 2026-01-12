@@ -1,0 +1,10 @@
+domain_name: "法律合同"
+entity_types:
+  Party: "合同主体（甲方、乙方、自然人或法人）"
+  Obligation: "约定的具体义务、权利、行为准则"
+  Liability: "违约责任、罚金、赔偿方案"
+  Timeline: "截止日期、交付节点、有效期"
+relationship_types:
+  obligated_to: "A 主体对 B 负有某种义务"
+  signs_with: "A 与 B 签署了某协议"
+  penalty_of: "违约行为对应的处罚结果"

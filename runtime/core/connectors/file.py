@@ -36,6 +36,7 @@ class FileConnector(BaseConnector):
                 yield DocumentChunk(
                     content=chunk["content"],
                     metadata={
+                        "content_hash": chunk["metadata"].get("content_hash"), # 透传哈希
                         "page_number": chunk["metadata"].get("page_number", 1),
                         "file_name": self.file_name,
                         "file_path": self.storage_path,

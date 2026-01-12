@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"log"
 	"time"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -79,9 +80,42 @@ func Run() {
 
 	// CORS 配置
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		// 动态检查Origin
+		AllowOriginFunc: func(origin string) bool {
+			// 允许没有origin的请求（如Postman、Apifox、curl）
+			if origin == "" {
+				return true
+			}
+
+			// 允许所有本地开发请求
+			if strings.Contains(origin, "localhost") ||
+				strings.Contains(origin, "127.0.0.1") {
+				return true
+			}
+
+			// 允许Tailscale内网IP（100.x.x.x）
+			if strings.HasPrefix(origin, "http://100.") ||
+				strings.HasPrefix(origin, "https://100.") {
+				return true
+			}
+
+			// 生产环境域名
+			allowedDomains := []string{
+				"your-domain.com",
+				"your-app.vercel.app",
+			}
+
+			for _, domain := range allowedDomains {
+				if strings.Contains(origin, domain) {
+					return true
+				}
+			}
+
+			return false
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length",
+			"Accept-Encoding", "X-CSRF-Token", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -123,7 +157,7 @@ func Run() {
 		protected.GET("/file/:filename", fileH.HandleGetFile)
 	}
 
-	log.Println("🚀 Chimera 后端已启动，监听端口 :8080")
+	log.Println("🚀 Chimera 后端已启动，监听端口 :8082")
 	if err := r.Run(":8082"); err != nil {
 		log.Fatalf("❌ Server 启动失败: %v", err)
 	}

@@ -1,0 +1,355 @@
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting vllm
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/46/ae/36f87f514811c1389ff1a16e4e5b0b55f25ce782eb0eff2d7eaa92ff7deb/vllm-0.13.0-cp38-abi3-manylinux_2_31_x86_64.whl (474.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 474.9/474.9 MB 52.2 MB/s  0:00:08
+Requirement already satisfied: regex in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (2025.11.3)
+Collecting cachetools (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/2c/fc/1d7b80d0eb7b714984ce40efc78859c022cd930e402f599d8ca9e39c78a4/cachetools-6.2.4-py3-none-any.whl (11 kB)
+Requirement already satisfied: psutil in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (7.2.1)
+Requirement already satisfied: sentencepiece in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (0.2.1)
+Requirement already satisfied: numpy in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (2.2.6)
+Requirement already satisfied: requests>=2.26.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (2.32.5)
+Requirement already satisfied: tqdm in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (4.67.1)
+Collecting blake3 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/fc/3b/7fb2fe615448caaa5f6632b2c7551117b38ccac747a3a5769181e9751641/blake3-1.0.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (387 kB)
+Collecting py-cpuinfo (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/e0/a9/023730ba63db1e494a271cb018dcd361bd2c917ba7004c3e49d5daf795a2/py_cpuinfo-9.0.0-py3-none-any.whl (22 kB)
+Requirement already satisfied: transformers<5,>=4.56.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (4.57.3)
+Requirement already satisfied: tokenizers>=0.21.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (0.22.2)
+Requirement already satisfied: protobuf in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (6.33.2)
+Collecting fastapi>=0.115.0 (from fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/5c/05/5cbb59154b093548acd0f4c7c474a118eda06da25aa75c616b72d8fcd92a/fastapi-0.128.0-py3-none-any.whl (103 kB)
+Requirement already satisfied: aiohttp in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (3.13.3)
+Requirement already satisfied: openai>=1.99.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (2.14.0)
+Requirement already satisfied: pydantic>=2.12.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (2.12.5)
+Collecting prometheus_client>=0.18.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/b8/db/14bafcb4af2139e046d03fd00dea7873e48eafe18b7d2797e73d6681f210/prometheus_client-0.23.1-py3-none-any.whl (61 kB)
+Requirement already satisfied: pillow in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (11.3.0)
+Collecting prometheus-fastapi-instrumentator>=7.0.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/27/72/0824c18f3bc75810f55dacc2dd933f6ec829771180245ae3cc976195dec0/prometheus_fastapi_instrumentator-7.1.0-py3-none-any.whl (19 kB)
+Collecting tiktoken>=0.6.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/6a/d0/3d9275198e067f8b65076a68894bb52fd253875f3644f0a321a720277b8a/tiktoken-0.12.0-cp311-cp311-manylinux_2_28_x86_64.whl (1.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 39.7 MB/s  0:00:00
+Collecting lm-format-enforcer==0.11.3 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/a0/ef/11292bb0b85cf4c93447cab5a29f64576ed14d3ab4280e35ddd23486594a/lm_format_enforcer-0.11.3-py3-none-any.whl (45 kB)
+Collecting llguidance<1.4.0,>=1.3.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/83/a8/1ff2bedb8f9acb46a2d2d603415d272bb622c142ea86f5b95445cc6e366c/llguidance-1.3.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.0/3.0 MB 29.7 MB/s  0:00:00
+Collecting outlines_core==0.2.11 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/4c/db/32c6e1170f139420e948fdd18a09a6175244bc0760dcf4dc2470e18411b9/outlines_core-0.2.11-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 61.5 MB/s  0:00:00
+Collecting diskcache==5.6.3 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/3f/27/4570e78fc0bf5ea0ca45eb1de3818a23787af9b390c0b0a0033a1b8236f9/diskcache-5.6.3-py3-none-any.whl (45 kB)
+Collecting lark==1.2.2 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/2d/00/d90b10b962b4277f5e64a78b6609968859ff86889f5b898c1a778c06ec00/lark-1.2.2-py3-none-any.whl (111 kB)
+Collecting xgrammar==0.1.27 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/cc/a2/afcce6a59b83644ffe19ffebe8107355febb15d8084ce5316eccd457e3c8/xgrammar-0.1.27-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (8.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.9/8.9 MB 47.3 MB/s  0:00:00
+Requirement already satisfied: typing_extensions>=4.10 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (4.15.0)
+Requirement already satisfied: filelock>=3.16.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (3.20.2)
+Collecting partial-json-parser (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/42/32/658973117bf0fd82a24abbfb94fe73a5e86216e49342985e10acce54775a/partial_json_parser-0.2.1.1.post7-py3-none-any.whl (10 kB)
+Collecting pyzmq>=25.0.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/b1/c4/2a6fe5111a01005fc7af3878259ce17684fabb8852815eda6225620f3c59/pyzmq-27.1.0-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (857 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 857.0/857.0 kB 29.9 MB/s  0:00:00
+Collecting msgspec (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/6b/96/5c095b940de3aa6b43a71ec76275ac3537b21bd45c7499b5a17a429110fa/msgspec-0.20.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (219 kB)
+Collecting gguf>=0.17.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/fc/31/6a93a887617ee7deeaa602ca3d02d1c12a6cb8a742a695de5d128f5fa46a/gguf-0.17.1-py3-none-any.whl (96 kB)
+Collecting mistral_common>=1.8.5 (from mistral_common[image]>=1.8.5->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/73/02/c1866598c8e94a4d0593b73e6dec0afea722227b9b3223bf6bb8ab269fa7/mistral_common-1.8.8-py3-none-any.whl (6.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.5/6.5 MB 52.8 MB/s  0:00:00
+Collecting opencv-python-headless>=4.11.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/89/53/e19c21e0c4eb1275c3e2c97b081103b6dfb3938172264d283a519bf728b9/opencv_python_headless-4.12.0.88-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (54.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.0/54.0 MB 58.3 MB/s  0:00:00
+Requirement already satisfied: pyyaml in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (6.0.3)
+Collecting einops (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/87/62/9773de14fe6c45c23649e98b83231fffd7b9892b6cf863251dc2afa73643/einops-0.8.1-py3-none-any.whl (64 kB)
+Collecting compressed-tensors==0.12.2 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/f0/c0/1695b87d369e6652ec0d650912e02eca2151c5e9c29244f94d2afccfe970/compressed_tensors-0.12.2-py3-none-any.whl (183 kB)
+Collecting depyf==0.20.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/cf/65/4df6936130b56e1429114e663e7c1576cf845f3aef1b2dd200c0a5d19dba/depyf-0.20.0-py3-none-any.whl (39 kB)
+Collecting cloudpickle (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl (22 kB)
+Collecting watchfiles (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/af/b9/a419292f05e302dea372fa7e6fda5178a92998411f8581b9830d28fb9edb/watchfiles-1.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+Collecting python-json-logger (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/51/e5/fecf13f06e5e5f67e8837d777d1bc43fac0ed2b77a676804df5c34744727/python_json_logger-4.0.0-py3-none-any.whl (15 kB)
+Requirement already satisfied: scipy in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from vllm) (1.16.3)
+Collecting ninja (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/ed/de/0e6edf44d6a04dabd0318a519125ed0415ce437ad5a1ec9b9be03d9048cf/ninja-1.13.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (180 kB)
+Collecting pybase64 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/64/15/8d60b9ec5e658185fc2ee3333e01a6e30d717cf677b24f47cbb3a859d13c/pybase64-1.4.3-cp311-cp311-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (71 kB)
+Collecting cbor2 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/d0/e1/072745b4ff01afe9df2cd627f8fc51a1acedb5d3d1253765625d2929db91/cbor2-5.8.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (258 kB)
+Collecting ijson (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/59/bf/590bbc3c3566adce5e2f43ba5894520cbaf19a3e7f38c1250926ba67eee4/ijson-3.4.0.post0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (134 kB)
+Collecting setproctitle (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/18/2e/bd03ff02432a181c1787f6fc2a678f53b7dacdd5ded69c318fe1619556e8/setproctitle-1.3.7-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (32 kB)
+Collecting openai-harmony>=0.0.3 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/25/3f/1a192b93bb47c6b44cd98ba8cc1d3d2a9308f1bb700c3017e6352da11bda/openai_harmony-0.0.8-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.0/3.0 MB 30.3 MB/s  0:00:00
+Collecting anthropic==0.71.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/5d/77/073e8ac488f335aec7001952825275582fb8f433737e90f24eeef9d878f6/anthropic-0.71.0-py3-none-any.whl (355 kB)
+Collecting model-hosting-container-standards<1.0.0,>=0.1.9 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/8c/37/6dc61971ba31450bbed460b5f40543f0915e352680534e3bcaf57116d8d7/model_hosting_container_standards-0.1.13-py3-none-any.whl (105 kB)
+Collecting mcp (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/e2/fc/6dc7659c2ae5ddf280477011f4213a74f806862856b796ef08f028e664bf/mcp-1.25.0-py3-none-any.whl (233 kB)
+Collecting numba==0.61.2 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/97/c8/8740616c8436c86c1b9a62e72cb891177d2c34c2d24ddcde4c390371bf4c/numba-0.61.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (3.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.8/3.8 MB 35.0 MB/s  0:00:00
+Collecting ray>=2.48.0 (from ray[cgraph]>=2.48.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/63/de/58c19906b0dd16ea06b4f2465b7327f5f180e6b6e1c8c9b610d7c589ea5f/ray-2.53.0-cp311-cp311-manylinux2014_x86_64.whl (72.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 72.3/72.3 MB 55.1 MB/s  0:00:01
+Collecting torch==2.9.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/05/cc/49566caaa218872ec9a2912456f470ff92649894a4bc2e5274aa9ef87c4a/torch-2.9.0-cp311-cp311-manylinux_2_28_x86_64.whl (899.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 899.8/899.8 MB 42.4 MB/s  0:00:16
+Collecting torchaudio==2.9.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/f0/41/7aba77bc89d06df993c1519b66b7e0b09661d297d0eb8c044ab2c5af665f/torchaudio-2.9.0-cp311-cp311-manylinux_2_28_x86_64.whl (2.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 40.0 MB/s  0:00:00
+Collecting torchvision==0.24.0 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/1a/f4/6026c08011ddcefcbc14161c5aa9dce55c35c6b045e04ef0952e88bf4594/torchvision-0.24.0-cp311-cp311-manylinux_2_28_x86_64.whl (8.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.0/8.0 MB 60.9 MB/s  0:00:00
+Collecting flashinfer-python==0.5.3 (from vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/76/78/6dc7e7da8cb87c9965644ea0d2439457a1bc9256c45ceda0044595be4143/flashinfer_python-0.5.3-py3-none-any.whl (7.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.0/7.0 MB 62.3 MB/s  0:00:00
+Requirement already satisfied: anyio<5,>=3.5.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from anthropic==0.71.0->vllm) (4.12.1)
+Requirement already satisfied: distro<2,>=1.7.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from anthropic==0.71.0->vllm) (1.9.0)
+Collecting docstring-parser<1,>=0.15 (from anthropic==0.71.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/55/e2/2537ebcff11c1ee1ff17d8d0b6f4db75873e3b0fb32c2d4a2ee31ecb310a/docstring_parser-0.17.0-py3-none-any.whl (36 kB)
+Requirement already satisfied: httpx<1,>=0.25.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from anthropic==0.71.0->vllm) (0.28.1)
+Requirement already satisfied: jiter<1,>=0.4.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from anthropic==0.71.0->vllm) (0.12.0)
+Requirement already satisfied: sniffio in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from anthropic==0.71.0->vllm) (1.3.1)
+Collecting loguru (from compressed-tensors==0.12.2->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/0c/29/0348de65b8cc732daa3e33e67806420b2ae89bdce2b04af740289c5c6c8c/loguru-0.7.3-py3-none-any.whl (61 kB)
+Collecting astor (from depyf==0.20.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/c3/88/97eef84f48fa04fbd6750e62dcceafba6c63c81b7ac1420856c8dcc0a3f9/astor-0.8.1-py2.py3-none-any.whl (27 kB)
+Requirement already satisfied: dill in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from depyf==0.20.0->vllm) (0.4.0)
+Collecting apache-tvm-ffi<0.2,>=0.1 (from flashinfer-python==0.5.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/dd/bb/fa5042076bf6e7daaf9774389f99149c1851434fc0d8e4cb34aa0c4a3810/apache_tvm_ffi-0.1.7-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (2.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 50.4 MB/s  0:00:00
+Requirement already satisfied: click in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from flashinfer-python==0.5.3->vllm) (8.3.1)
+Collecting nvidia-cudnn-frontend>=1.13.0 (from flashinfer-python==0.5.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/15/20/80c4f5d62ebc58b8db8d25a2ee11f3246bb8947addea37c229540bcc05ac/nvidia_cudnn_frontend-1.17.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (2.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 53.7 MB/s  0:00:00
+Collecting nvidia-cutlass-dsl>=4.2.1 (from flashinfer-python==0.5.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/54/b5/d2f08919a9aa9052d45b2c8adfc310a724e9474e39c612358b1b24282c54/nvidia_cutlass_dsl-4.3.5-cp311-cp311-manylinux_2_28_x86_64.whl (58.6 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 58.6/58.6 MB 59.2 MB/s  0:00:00
+Collecting nvidia-ml-py (from flashinfer-python==0.5.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/e4/47/4c822bd37a008e72fd5a0eae33524ae3ac97b13f7030f63bae1728b8957e/nvidia_ml_py-13.590.44-py3-none-any.whl (50 kB)
+Requirement already satisfied: packaging>=24.2 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from flashinfer-python==0.5.3->vllm) (25.0)
+Requirement already satisfied: tabulate in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from flashinfer-python==0.5.3->vllm) (0.9.0)
+Collecting interegular>=0.3.2 (from lm-format-enforcer==0.11.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/c4/01/72d6472f80651673716d1deda2a5bbb633e563ecf94f4479da5519d69d25/interegular-0.3.3-py37-none-any.whl (23 kB)
+Collecting llvmlite<0.45,>=0.44.0dev0 (from numba==0.61.2->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/99/fe/d030f1849ebb1f394bb3f7adad5e729b634fb100515594aca25c354ffc62/llvmlite-0.44.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (42.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 42.4/42.4 MB 59.1 MB/s  0:00:00
+Collecting sympy>=1.13.3 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl (6.3 MB)
+Requirement already satisfied: networkx>=2.5.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from torch==2.9.0->vllm) (3.6.1)
+Requirement already satisfied: jinja2 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from torch==2.9.0->vllm) (3.1.6)
+Requirement already satisfied: fsspec>=0.8.5 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from torch==2.9.0->vllm) (2025.10.0)
+Collecting nvidia-cuda-nvrtc-cu12==12.8.93 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/05/6b/32f747947df2da6994e999492ab306a903659555dddc0fbdeb9d71f75e52/nvidia_cuda_nvrtc_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl (88.0 MB)
+Collecting nvidia-cuda-runtime-cu12==12.8.90 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/0d/9b/a997b638fcd068ad6e4d53b8551a7d30fe8b404d6f1804abf1df69838932/nvidia_cuda_runtime_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (954 kB)
+Collecting nvidia-cuda-cupti-cu12==12.8.90 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/f8/02/2adcaa145158bf1a8295d83591d22e4103dbfd821bcaf6f3f53151ca4ffa/nvidia_cuda_cupti_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (10.2 MB)
+Collecting nvidia-cudnn-cu12==9.10.2.21 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/ba/51/e123d997aa098c61d029f76663dedbfb9bc8dcf8c60cbd6adbe42f76d049/nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_x86_64.whl (706.8 MB)
+Collecting nvidia-cublas-cu12==12.8.4.1 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/dc/61/e24b560ab2e2eaeb3c839129175fb330dfcfc29e5203196e5541a4c44682/nvidia_cublas_cu12-12.8.4.1-py3-none-manylinux_2_27_x86_64.whl (594.3 MB)
+Collecting nvidia-cufft-cu12==11.3.3.83 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/1f/13/ee4e00f30e676b66ae65b4f08cb5bcbb8392c03f54f2d5413ea99a5d1c80/nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (193.1 MB)
+Collecting nvidia-curand-cu12==10.3.9.90 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/fb/aa/6584b56dc84ebe9cf93226a5cde4d99080c8e90ab40f0c27bda7a0f29aa1/nvidia_curand_cu12-10.3.9.90-py3-none-manylinux_2_27_x86_64.whl (63.6 MB)
+Collecting nvidia-cusolver-cu12==11.7.3.90 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/85/48/9a13d2975803e8cf2777d5ed57b87a0b6ca2cc795f9a4f59796a910bfb80/nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_x86_64.whl (267.5 MB)
+Collecting nvidia-cusparse-cu12==12.5.8.93 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/c2/f5/e1854cb2f2bcd4280c44736c93550cc300ff4b8c95ebe370d0aa7d2b473d/nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (288.2 MB)
+Requirement already satisfied: nvidia-cusparselt-cu12==0.7.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from torch==2.9.0->vllm) (0.7.1)
+Collecting nvidia-nccl-cu12==2.27.5 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/6e/89/f7a07dc961b60645dbbf42e80f2bc85ade7feb9a491b11a1e973aa00071f/nvidia_nccl_cu12-2.27.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (322.3 MB)
+Requirement already satisfied: nvidia-nvshmem-cu12==3.3.20 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from torch==2.9.0->vllm) (3.3.20)
+Collecting nvidia-nvtx-cu12==12.8.90 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/a2/eb/86626c1bbc2edb86323022371c39aa48df6fd8b0a1647bc274577f72e90b/nvidia_nvtx_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (89 kB)
+Collecting nvidia-nvjitlink-cu12==12.8.93 (from torch==2.9.0->vllm)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/f6/74/86a07f1d0f42998ca31312f998bd3b9a7eff7f52378f4f270c8679c77fb9/nvidia_nvjitlink_cu12-12.8.93-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl (39.3 MB)
+Requirement already satisfied: nvidia-cufile-cu12==1.13.1.3 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from torch==2.9.0->vllm) (1.13.1.3)
+Collecting triton==3.5.0 (from torch==2.9.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/3d/78/949a04391c21956c816523678f0e5fa308eb5b1e7622d88c4e4ef5fceca0/triton-3.5.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (170.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 170.4/170.4 MB 57.1 MB/s  0:00:02
+Requirement already satisfied: idna>=2.8 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from anyio<5,>=3.5.0->anthropic==0.71.0->vllm) (3.11)
+Requirement already satisfied: certifi in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from httpx<1,>=0.25.0->anthropic==0.71.0->vllm) (2026.1.4)
+Requirement already satisfied: httpcore==1.* in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from httpx<1,>=0.25.0->anthropic==0.71.0->vllm) (1.0.9)
+Requirement already satisfied: h11>=0.16 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from httpcore==1.*->httpx<1,>=0.25.0->anthropic==0.71.0->vllm) (0.16.0)
+Collecting jmespath (from model-hosting-container-standards<1.0.0,>=0.1.9->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl (20 kB)
+Requirement already satisfied: setuptools in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from model-hosting-container-standards<1.0.0,>=0.1.9->vllm) (80.9.0)
+Collecting starlette>=0.49.1 (from model-hosting-container-standards<1.0.0,>=0.1.9->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/18/c4/09985a03dba389d4fe16a9014147a7b02fa76ef3519bf5846462a485876d/starlette-0.51.0-py3-none-any.whl (74 kB)
+Collecting supervisor>=4.2.0 (from model-hosting-container-standards<1.0.0,>=0.1.9->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/0e/65/5e726c372da8a5e35022a94388b12252710aad0c2351699c3d76ae8dba78/supervisor-4.3.0-py2.py3-none-any.whl (320 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from pydantic>=2.12.0->vllm) (0.7.0)
+Requirement already satisfied: pydantic-core==2.41.5 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from pydantic>=2.12.0->vllm) (2.41.5)
+Requirement already satisfied: typing-inspection>=0.4.2 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from pydantic>=2.12.0->vllm) (0.4.2)
+Requirement already satisfied: huggingface-hub<1.0,>=0.34.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from transformers<5,>=4.56.0->vllm) (0.36.0)
+Requirement already satisfied: safetensors>=0.4.3 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from transformers<5,>=4.56.0->vllm) (0.7.0)
+Requirement already satisfied: hf-xet<2.0.0,>=1.1.3 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from huggingface-hub<1.0,>=0.34.0->transformers<5,>=4.56.0->vllm) (1.2.0)
+Collecting starlette>=0.49.1 (from model-hosting-container-standards<1.0.0,>=0.1.9->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/d9/52/1064f510b141bd54025f9b55105e26d1fa970b9be67ad766380a3c9b74b0/starlette-0.50.0-py3-none-any.whl (74 kB)
+Collecting annotated-doc>=0.0.2 (from fastapi>=0.115.0->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/1e/d3/26bf1008eb3d2daa8ef4cacc7f3bfdc11818d111f7e2d0201bc6e3b49d45/annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+Collecting fastapi-cli>=0.0.8 (from fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/08/89/5c4eef60524d0fd704eb0706885b82cd5623a43396b94e4a5b17d3a3f516/fastapi_cli-0.0.20-py3-none-any.whl (12 kB)
+Collecting python-multipart>=0.0.18 (from fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/aa/76/03af049af4dcee5d27442f71b6924f01f3efb5d2bd34f23fcd563f2cc5f5/python_multipart-0.0.21-py3-none-any.whl (24 kB)
+Collecting email-validator>=2.0.0 (from fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/de/15/545e2b6cf2e3be84bc1ed85613edd75b8aea69807a71c26f4ca6a9258e82/email_validator-2.3.0-py3-none-any.whl (35 kB)
+Collecting uvicorn>=0.12.0 (from uvicorn[standard]>=0.12.0; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/3d/d8/2083a1daa7439a66f3a48589a57d576aa117726762618f6bb09fe3798796/uvicorn-0.40.0-py3-none-any.whl (68 kB)
+Requirement already satisfied: pydantic-settings>=2.0.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from fastapi[standard]>=0.115.0->vllm) (2.12.0)
+Collecting pydantic-extra-types>=2.0.0 (from fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/fe/17/fabd56da47096d240dd45ba627bead0333b0cf0ee8ada9bec579287dadf3/pydantic_extra_types-2.11.0-py3-none-any.whl (74 kB)
+Collecting dnspython>=2.0.0 (from email-validator>=2.0.0->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/ba/5a/18ad964b0086c6e62e2e7500f7edc89e3faa45033c71c1893d34eed2b2de/dnspython-2.8.0-py3-none-any.whl (331 kB)
+Requirement already satisfied: typer>=0.15.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from fastapi-cli>=0.0.8->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm) (0.19.2)
+Collecting rich-toolkit>=0.14.8 (from fastapi-cli>=0.0.8->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/7f/7b/15e55fa8a76d0d41bf34d965af78acdaf80a315907adb30de8b63c272694/rich_toolkit-0.17.1-py3-none-any.whl (31 kB)
+Collecting fastapi-cloud-cli>=0.1.1 (from fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/27/fd/65cdeb2916419eaf5e61428e63ceec7af5463a2239b1583119d85b38a792/fastapi_cloud_cli-0.9.0-py3-none-any.whl (23 kB)
+Collecting rignore>=0.5.1 (from fastapi-cloud-cli>=0.1.1->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/e8/40/9cd949761a7af5bc27022a939c91ff622d29c7a0b66d0c13a863097dde2d/rignore-0.7.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (959 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 959.5/959.5 kB 34.3 MB/s  0:00:00
+Collecting sentry-sdk>=2.20.0 (from fastapi-cloud-cli>=0.1.1->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/88/43/1c586f9f413765201234541857cb82fda076f4b0f7bad4a0ec248da39cf3/sentry_sdk-2.49.0-py2.py3-none-any.whl (415 kB)
+Collecting fastar>=0.8.0 (from fastapi-cloud-cli>=0.1.1->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/53/a8/12708ea4d21e3cf9f485b2a67d44ce84d949a6eddcc9aa5b3d324585ab43/fastar-0.8.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (821 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 821.6/821.6 kB 27.1 MB/s  0:00:00
+Requirement already satisfied: MarkupSafe>=2.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from jinja2->torch==2.9.0->vllm) (3.0.3)
+Requirement already satisfied: jsonschema>=4.21.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from mistral_common>=1.8.5->mistral_common[image]>=1.8.5->vllm) (4.25.1)
+Requirement already satisfied: attrs>=22.2.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from jsonschema>=4.21.1->mistral_common>=1.8.5->mistral_common[image]>=1.8.5->vllm) (25.4.0)
+Requirement already satisfied: jsonschema-specifications>=2023.03.6 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from jsonschema>=4.21.1->mistral_common>=1.8.5->mistral_common[image]>=1.8.5->vllm) (2025.9.1)
+Requirement already satisfied: referencing>=0.28.4 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from jsonschema>=4.21.1->mistral_common>=1.8.5->mistral_common[image]>=1.8.5->vllm) (0.37.0)
+Requirement already satisfied: rpds-py>=0.7.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from jsonschema>=4.21.1->mistral_common>=1.8.5->mistral_common[image]>=1.8.5->vllm) (0.30.0)
+Collecting cuda-python>=12.8 (from nvidia-cutlass-dsl>=4.2.1->flashinfer-python==0.5.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/cd/08/b5e3b9822662d72d540d830531e3ab6a7cabbda3dd56175696aabccfeb76/cuda_python-13.1.1-py3-none-any.whl (8.0 kB)
+Collecting cuda-bindings~=13.1.1 (from cuda-python>=12.8->nvidia-cutlass-dsl>=4.2.1->flashinfer-python==0.5.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/17/af/710403f76f2d608d483d87089465e1f666351641dbd73d19bd025e652bad/cuda_bindings-13.1.1-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (16.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.3/16.3 MB 57.9 MB/s  0:00:00
+Collecting cuda-pathfinder~=1.1 (from cuda-python>=12.8->nvidia-cutlass-dsl>=4.2.1->flashinfer-python==0.5.3->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/0b/02/4dbe7568a42e46582248942f54dc64ad094769532adbe21e525e4edf7bc4/cuda_pathfinder-1.3.3-py3-none-any.whl (27 kB)
+Collecting pycountry>=23 (from pydantic-extra-types[pycountry]>=2.10.5->mistral_common>=1.8.5->mistral_common[image]>=1.8.5->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/b1/ec/1fb891d8a2660716aadb2143235481d15ed1cbfe3ad669194690b0604492/pycountry-24.6.1-py3-none-any.whl (6.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 61.8 MB/s  0:00:00
+Requirement already satisfied: python-dotenv>=0.21.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from pydantic-settings>=2.0.0->fastapi[standard]>=0.115.0->vllm) (1.2.1)
+Collecting msgpack<2.0.0,>=1.0.0 (from ray>=2.48.0->ray[cgraph]>=2.48.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/da/e0/6cc2e852837cd6086fe7d8406af4294e66827a60a4cf60b86575a4a65ca8/msgpack-1.1.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (426 kB)
+Collecting cupy-cuda12x (from ray[cgraph]>=2.48.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/fc/d9/5c5077243cd92368c3eccecdbf91d76db15db338169042ffd1647533c6b1/cupy_cuda12x-13.6.0-cp311-cp311-manylinux2014_x86_64.whl (113.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 113.0/113.0 MB 57.0 MB/s  0:00:01
+Requirement already satisfied: charset_normalizer<4,>=2 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from requests>=2.26.0->vllm) (3.4.4)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from requests>=2.26.0->vllm) (1.26.20)
+Requirement already satisfied: rich>=13.7.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from rich-toolkit>=0.14.8->fastapi-cli>=0.0.8->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm) (14.2.0)
+Requirement already satisfied: markdown-it-py>=2.2.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from rich>=13.7.1->rich-toolkit>=0.14.8->fastapi-cli>=0.0.8->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm) (4.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from rich>=13.7.1->rich-toolkit>=0.14.8->fastapi-cli>=0.0.8->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm) (2.19.2)
+Requirement already satisfied: mdurl~=0.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from markdown-it-py>=2.2.0->rich>=13.7.1->rich-toolkit>=0.14.8->fastapi-cli>=0.0.8->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm) (0.1.2)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from sympy>=1.13.3->torch==2.9.0->vllm) (1.3.0)
+Requirement already satisfied: shellingham>=1.3.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from typer>=0.15.1->fastapi-cli>=0.0.8->fastapi-cli[standard]>=0.0.8; extra == "standard"->fastapi[standard]>=0.115.0->vllm) (1.5.4)
+Collecting httptools>=0.6.3 (from uvicorn[standard]>=0.12.0; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/cc/cc/10935db22fda0ee34c76f047590ca0a8bd9de531406a3ccb10a90e12ea21/httptools-0.7.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (456 kB)
+Collecting uvloop>=0.15.1 (from uvicorn[standard]>=0.12.0; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/74/4f/256aca690709e9b008b7108bc85fba619a2bc37c6d80743d18abad16ee09/uvloop-0.22.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.8/3.8 MB 65.1 MB/s  0:00:00
+Collecting websockets>=10.4 (from uvicorn[standard]>=0.12.0; extra == "standard"->fastapi[standard]>=0.115.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/d2/ae/0ee92b33087a33632f37a635e11e1d99d429d3d323329675a6022312aac2/websockets-16.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (184 kB)
+Requirement already satisfied: aiohappyeyeballs>=2.5.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from aiohttp->vllm) (2.6.1)
+Requirement already satisfied: aiosignal>=1.4.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from aiohttp->vllm) (1.4.0)
+Requirement already satisfied: frozenlist>=1.1.1 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from aiohttp->vllm) (1.8.0)
+Requirement already satisfied: multidict<7.0,>=4.5 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from aiohttp->vllm) (6.7.0)
+Requirement already satisfied: propcache>=0.2.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from aiohttp->vllm) (0.4.1)
+Requirement already satisfied: yarl<2.0,>=1.17.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from aiohttp->vllm) (1.22.0)
+Collecting fastrlock>=0.5 (from cupy-cuda12x->ray[cgraph]>=2.48.0->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/01/e2/5e5515562b2e9a56d84659377176aef7345da2c3c22909a1897fe27e14dd/fastrlock-0.8.3-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_28_x86_64.whl (54 kB)
+Collecting httpx-sse>=0.4 (from mcp->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/d2/fd/6668e5aec43ab844de6fc74927e155a3b37bf40d7c3790e49fc0406b6578/httpx_sse-0.4.3-py3-none-any.whl (9.0 kB)
+Collecting pyjwt>=2.10.1 (from pyjwt[crypto]>=2.10.1->mcp->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/61/ad/689f02752eeec26aed679477e80e632ef1b682313be70793d798c1d5fc8f/PyJWT-2.10.1-py3-none-any.whl (22 kB)
+Collecting sse-starlette>=1.6.1 (from mcp->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/b7/95/8c4b76eec9ae574474e5d2997557cebf764bcd3586458956c30631ae08f4/sse_starlette-3.1.2-py3-none-any.whl (12 kB)
+Collecting cryptography>=3.4.0 (from pyjwt[crypto]>=2.10.1->mcp->vllm)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/8f/29/798fc4ec461a1c9e9f735f2fc58741b0daae30688f41b2497dcbc9ed1355/cryptography-46.0.3-cp311-abi3-manylinux_2_34_x86_64.whl (4.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.5/4.5 MB 59.7 MB/s  0:00:00
+Requirement already satisfied: cffi>=2.0.0 in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from cryptography>=3.4.0->pyjwt[crypto]>=2.10.1->mcp->vllm) (2.0.0)
+Requirement already satisfied: pycparser in /home/leon/miniconda3/envs/chimera-env/lib/python3.11/site-packages (from cffi>=2.0.0->cryptography>=3.4.0->pyjwt[crypto]>=2.10.1->mcp->vllm) (2.23)
+Installing collected packages: supervisor, py-cpuinfo, nvidia-ml-py, fastrlock, websockets, uvloop, uvicorn, triton, sympy, setproctitle, sentry-sdk, rignore, pyzmq, python-multipart, python-json-logger, pyjwt, pycountry, pybase64, prometheus_client, partial-json-parser, outlines_core, opencv-python-headless, nvidia-nvtx-cu12, nvidia-nvjitlink-cu12, nvidia-nccl-cu12, nvidia-curand-cu12, nvidia-cudnn-frontend, nvidia-cuda-runtime-cu12, nvidia-cuda-nvrtc-cu12, nvidia-cuda-cupti-cu12, nvidia-cublas-cu12, ninja, msgspec, msgpack, loguru, llvmlite, llguidance, lark, jmespath, interegular, ijson, httpx-sse, httptools, gguf, fastar, einops, docstring-parser, dnspython, diskcache, cupy-cuda12x, cuda-pathfinder, cloudpickle, cbor2, cachetools, blake3, astor, apache-tvm-ffi, annotated-doc, watchfiles, tiktoken, starlette, nvidia-cusparse-cu12, nvidia-cufft-cu12, nvidia-cudnn-cu12, numba, email-validator, depyf, cuda-bindings, cryptography, sse-starlette, rich-toolkit, pydantic-extra-types, prometheus-fastapi-instrumentator, openai-harmony, nvidia-cusolver-cu12, lm-format-enforcer, fastapi, cuda-python, anthropic, torch, ray, nvidia-cutlass-dsl, model-hosting-container-standards, mcp, fastapi-cloud-cli, fastapi-cli, xgrammar, torchvision, torchaudio, mistral_common, flashinfer-python, compressed-tensors, vllm
+  Attempting uninstall: triton
+    Found existing installation: triton 3.1.0
+    Uninstalling triton-3.1.0:
+      Successfully uninstalled triton-3.1.0
+  Attempting uninstall: sympy
+    Found existing installation: sympy 1.13.1
+    Uninstalling sympy-1.13.1:
+      Successfully uninstalled sympy-1.13.1
+  Attempting uninstall: nvidia-nvtx-cu12
+    Found existing installation: nvidia-nvtx-cu12 12.4.127
+    Uninstalling nvidia-nvtx-cu12-12.4.127:
+      Successfully uninstalled nvidia-nvtx-cu12-12.4.127
+  Attempting uninstall: nvidia-nvjitlink-cu12
+    Found existing installation: nvidia-nvjitlink-cu12 12.4.127
+    Uninstalling nvidia-nvjitlink-cu12-12.4.127:
+      Successfully uninstalled nvidia-nvjitlink-cu12-12.4.127
+  Attempting uninstall: nvidia-nccl-cu12
+    Found existing installation: nvidia-nccl-cu12 2.21.5
+    Uninstalling nvidia-nccl-cu12-2.21.5:
+      Successfully uninstalled nvidia-nccl-cu12-2.21.5
+  Attempting uninstall: nvidia-curand-cu12
+    Found existing installation: nvidia-curand-cu12 10.3.5.147
+    Uninstalling nvidia-curand-cu12-10.3.5.147:
+      Successfully uninstalled nvidia-curand-cu12-10.3.5.147
+  Attempting uninstall: nvidia-cuda-runtime-cu12
+    Found existing installation: nvidia-cuda-runtime-cu12 12.4.127
+    Uninstalling nvidia-cuda-runtime-cu12-12.4.127:
+      Successfully uninstalled nvidia-cuda-runtime-cu12-12.4.127
+  Attempting uninstall: nvidia-cuda-nvrtc-cu12
+    Found existing installation: nvidia-cuda-nvrtc-cu12 12.4.127
+    Uninstalling nvidia-cuda-nvrtc-cu12-12.4.127:
+      Successfully uninstalled nvidia-cuda-nvrtc-cu12-12.4.127
+  Attempting uninstall: nvidia-cuda-cupti-cu12
+    Found existing installation: nvidia-cuda-cupti-cu12 12.4.127
+    Uninstalling nvidia-cuda-cupti-cu12-12.4.127:
+      Successfully uninstalled nvidia-cuda-cupti-cu12-12.4.127
+  Attempting uninstall: nvidia-cublas-cu12
+    Found existing installation: nvidia-cublas-cu12 12.4.5.8
+    Uninstalling nvidia-cublas-cu12-12.4.5.8:
+      Successfully uninstalled nvidia-cublas-cu12-12.4.5.8
+  Attempting uninstall: nvidia-cusparse-cu12
+    Found existing installation: nvidia-cusparse-cu12 12.3.1.170
+    Uninstalling nvidia-cusparse-cu12-12.3.1.170:
+      Successfully uninstalled nvidia-cusparse-cu12-12.3.1.170
+  Attempting uninstall: nvidia-cufft-cu12
+    Found existing installation: nvidia-cufft-cu12 11.2.1.3
+    Uninstalling nvidia-cufft-cu12-11.2.1.3:
+      Successfully uninstalled nvidia-cufft-cu12-11.2.1.3
+  Attempting uninstall: nvidia-cudnn-cu12
+    Found existing installation: nvidia-cudnn-cu12 9.1.0.70
+    Uninstalling nvidia-cudnn-cu12-9.1.0.70:
+      Successfully uninstalled nvidia-cudnn-cu12-9.1.0.70
+  Attempting uninstall: nvidia-cusolver-cu12
+    Found existing installation: nvidia-cusolver-cu12 11.6.1.9
+    Uninstalling nvidia-cusolver-cu12-11.6.1.9:
+      Successfully uninstalled nvidia-cusolver-cu12-11.6.1.9
+  Attempting uninstall: torch
+    Found existing installation: torch 2.5.1
+    Uninstalling torch-2.5.1:
+      Successfully uninstalled torch-2.5.1
+  Attempting uninstall: torchvision
+    Found existing installation: torchvision 0.20.1
+    Uninstalling torchvision-0.20.1:
+      Successfully uninstalled torchvision-0.20.1
+  Attempting uninstall: torchaudio
+    Found existing installation: torchaudio 2.5.1
+    Uninstalling torchaudio-2.5.1:
+      Successfully uninstalled torchaudio-2.5.1
+
+Successfully installed annotated-doc-0.0.4 anthropic-0.71.0 apache-tvm-ffi-0.1.7 astor-0.8.1 blake3-1.0.8 cachetools-6.2.4 cbor2-5.8.0 cloudpickle-3.1.2 compressed-tensors-0.12.2 cryptography-46.0.3 cuda-bindings-13.1.1 cuda-pathfinder-1.3.3 cuda-python-13.1.1 cupy-cuda12x-13.6.0 depyf-0.20.0 diskcache-5.6.3 dnspython-2.8.0 docstring-parser-0.17.0 einops-0.8.1 email-validator-2.3.0 fastapi-0.128.0 fastapi-cli-0.0.20 fastapi-cloud-cli-0.9.0 fastar-0.8.0 fastrlock-0.8.3 flashinfer-python-0.5.3 gguf-0.17.1 httptools-0.7.1 httpx-sse-0.4.3 ijson-3.4.0.post0 interegular-0.3.3 jmespath-1.0.1 lark-1.2.2 llguidance-1.3.0 llvmlite-0.44.0 lm-format-enforcer-0.11.3 loguru-0.7.3 mcp-1.25.0 mistral_common-1.8.8 model-hosting-container-standards-0.1.13 msgpack-1.1.2 msgspec-0.20.0 ninja-1.13.0 numba-0.61.2 nvidia-cublas-cu12-12.8.4.1 nvidia-cuda-cupti-cu12-12.8.90 nvidia-cuda-nvrtc-cu12-12.8.93 nvidia-cuda-runtime-cu12-12.8.90 nvidia-cudnn-cu12-9.10.2.21 nvidia-cudnn-frontend-1.17.0 nvidia-cufft-cu12-11.3.3.83 nvidia-curand-cu12-10.3.9.90 nvidia-cusolver-cu12-11.7.3.90 nvidia-cusparse-cu12-12.5.8.93 nvidia-cutlass-dsl-4.3.5 nvidia-ml-py-13.590.44 nvidia-nccl-cu12-2.27.5 nvidia-nvjitlink-cu12-12.8.93 nvidia-nvtx-cu12-12.8.90 openai-harmony-0.0.8 opencv-python-headless-4.12.0.88 outlines_core-0.2.11 partial-json-parser-0.2.1.1.post7 prometheus-fastapi-instrumentator-7.1.0 prometheus_client-0.23.1 py-cpuinfo-9.0.0 pybase64-1.4.3 pycountry-24.6.1 pydantic-extra-types-2.11.0 pyjwt-2.10.1 python-json-logger-4.0.0 python-multipart-0.0.21 pyzmq-27.1.0 ray-2.53.0 rich-toolkit-0.17.1 rignore-0.7.6 sentry-sdk-2.49.0 setproctitle-1.3.7 sse-starlette-3.1.2 starlette-0.50.0 supervisor-4.3.0 sympy-1.14.0 tiktoken-0.12.0 torch-2.9.0 torchaudio-2.9.0 torchvision-0.24.0 triton-3.5.0 uvicorn-0.40.0 uvloop-0.22.1 vllm-0.13.0 watchfiles-1.1.1 websockets-16.0 xgrammar-0.1.27

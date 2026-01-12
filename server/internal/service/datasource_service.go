@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"log"
 
-	pb "Chimera/server/api/runtime/v1"
 	"Chimera/server/internal/core"
 	"Chimera/server/internal/data"
 	"Chimera/server/internal/dto"
@@ -150,31 +150,28 @@ func (s *DataSourceService) checkKbPermission(kbID uint, userID uint) error {
 // triggerAsyncETL 异步触发
 func (s *DataSourceService) triggerAsyncETL(dsID uint, kbID uint, sourceType string, configBytes []byte) {
 	go func() {
-		// 30分钟超时
-		bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-		defer cancel()
+		// 1. 设置数据源状态为 "pending" 或 "queueing"
+		s.updateDataSourceStatus(dsID, "queueing", "", 0, 0)
 
-		s.updateDataSourceStatus(dsID, "syncing", "", 0, 0)
+		// 2. 构造任务消息
+		taskMap := map[string]interface{}{
+			"task_id":       fmt.Sprintf("etl_%d_%d", dsID, time.Now().Unix()),
+			"ds_id":         dsID,
+			"kb_id":         kbID,
+			"type":          sourceType,
+			"config_json":   string(configBytes),
+			"timestamp":     time.Now().Unix(),
+		}
+		payload, _ := json.Marshal(taskMap)
 
-		// 调用 Adapter (gRPC)
-		resp, err := s.Adapter.SyncDataSource(bgCtx, &pb.SyncRequest{
-			KbId:         int64(kbID),
-			DatasourceId: int64(dsID),
-			Type:         sourceType,
-			ConfigJson:   string(configBytes),
-		})
-
+		// 3. 将任务推入 Redis 列表 (生产者)
+		err := s.Data.PushTask(context.Background(), "chimera_etl_tasks", string(payload))
 		if err != nil {
-			s.updateDataSourceStatus(dsID, "failed", fmt.Sprintf("RPC Error: %v", err), 0, 0)
+			s.updateDataSourceStatus(dsID, "failed", "任务入队失败: "+err.Error(), 0, 0)
 			return
 		}
 
-		if !resp.Success {
-			s.updateDataSourceStatus(dsID, "failed", resp.ErrorMsg, 0, 0)
-			return
-		}
-
-		s.updateDataSourceStatus(dsID, "active", "", int(resp.ChunksCount), int(resp.PageCount))
+		log.Printf("📦 [Go-Task] ETL Task pushed for DS:%d", dsID)
 	}()
 }
 

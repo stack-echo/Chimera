@@ -37,6 +37,7 @@ class Config:
     # 3. Redis 配置
     REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
     REDIS_PORT = int(os.getenv("REDIS_PORT", 26379))
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "chimera_secret")
 
     # 🔥 4. MinIO 配置 (新增)
     # 注意：本地运行时如果连 Docker 里的 MinIO，host 应该是 localhost:9000
@@ -48,6 +49,8 @@ class Config:
 
     ES_HOST = os.getenv("ES_HOST", "127.0.0.1")
     ES_PORT = int(os.getenv("ES_PORT", 29200))
+
+    VLM_MODEL_PATH = os.getenv("VLM_MODEL_PATH", "/home/leon/IdeaProjects/Chimera/runtime/models/Qwen2-VL-7B-Int4")
 
 # --- 业务参数 ---
     CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 500))

@@ -1,0 +1,11 @@
+domain_name: "科研与技术"
+entity_types: # 🔥 移除减号，改为纯字典结构
+  Algorithm: "算法、模型架构、数学方法 (如 IncDE, CNN)"
+  Metric: "评估指标、性能参数 (如 MRR, Hits@10)"
+  Dataset: "实验数据集、基准测试集 (如 WN18RR)"
+  Task: "研究问题、具体任务 (如 持续学习)"
+relationship_types:
+  evaluates_on: "算法在数据集上进行测试"
+  outperforms: "A 算法在某项指标上优于 B 算法"
+  implements: "某方法实现了某种功能或逻辑"
+  tackles: "某方法解决了某个具体 Task"

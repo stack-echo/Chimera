@@ -17,6 +17,7 @@ __pycache__/
 env/
 venv/
 *.egg-info/
+/runtime/models
 
 # --- Project Specific ---
 # 忽略 Docker 挂载的本地数据目录
