@@ -1,12 +1,6 @@
-这份 `README.md` 已经根据 **v0.6.1 (Stable Cognitive)** 版本的最新进展进行了全面重写。
+# 🦄 Chimera-RAG (v0.7.0)
 
-它重点突出了你刚刚攻克的 **“三路混合召回”**、**“符号-拓扑对齐”**、**“4090 硬件加速”** 以及 **“Skyline 过滤算法”** 等硬核特性。
-
----
-
-# 🦄 Chimera (v0.6.1)
-
-> **The Observable AI Agent Platform.**
+> **The Cognitive Operating System for Enterprise AI.**
 > **面向企业的认知增强型多智能体 PaaS 平台。**
 
 [![License](https://img.shields.io/badge/license-AGPL%20v3-blue.svg)](LICENSE)
@@ -16,61 +10,59 @@
 [![English](https://img.shields.io/badge/-English-0077b5?style=for-the-badge)](README_EN.md)
 [![中文](https://img.shields.io/badge/-中文-d52a1d?style=for-the-badge)](README.md)
 
-Chimera 是一个基于 **Go (Control Plane)** + **Python (Inference Runtime)** 双核架构的企业级 AI 基础设施。
+Chimera 旨在解决企业大模型应用中“幻觉率高”、“专业知识理解浅”及“过程不可审计”的痛点。我们不只是在做 RAG，而是在构建文档的“数字认知孪生”。
 
-在 **v0.6.1 (Stable Cognitive)** 版本中，我们实现了从“平铺向量检索”向“深度认知推理”的跨越。通过整合向量、图谱、全文检索三路引擎，Chimera 能够理解文档的层级结构，并像专家一样进行逻辑推导。
+## 🎯 核心愿景：三大基座计划
 
-## ✨ v0.6.1 新特性：认知对齐
+根据 v1.0.0 路线图，Chimera 正在全力打造支撑垂直领域智能体的三大核心基座：
+1. **知识引擎基座 (Knowledge Engine Base)**：[v0.7.0 已交付] 深度结构化、多模态、跨文档知识缝合。
+2. **审计归因基座 (Trust & Audit Base)**：[v0.8.0 计划中] 像素级溯源、逻辑路径回溯、RAGAS 自动量化评估。
+3. **记忆演进基座 (Agentic Memory Base)**：[v0.9.0 计划中] 用户兴趣拓扑演进、长期情境对齐、知识自进化。
 
-### 🧠 三路混合召回 (3S Retrieval)
-- **语义层 (Semantic)**：基于 **Qdrant** 的高维向量搜索，捕捉语境深层含义。
-- **符号层 (Symbolic)**：基于 **Elasticsearch** 的全文检索，解决口语提问与专业术语的“实体链接”断层。
-- **逻辑层 (Logical)**：基于 **NebulaGraph** 的知识图谱，通过多跳（Multi-hop）关联补全逻辑链条。
+---
 
-### 🧬 高性能分布式 ETL
-- **Docling v2 深度解析**：支持 **Tree-T** 文档层级树提取，保留 Breadcrumbs 路径导航。
-- **表格命题化**：将非结构化表格转化为线性陈述句，大幅提升复杂数据的检索命中率。
-- **梯度消歧算法**：落地 **BookRAG** 提出的 $O(n)$ 复杂度实体对齐技术，确保图谱纯净。
+## ✨ v0.7.0 新特性：深度认知引擎
 
-### 🔬 全链路白盒化 (XAI)
-- **可视化推理**：前端实时渲染 **ECharts 知识拓扑图** 与折叠式 **Thought Chain (思考链)**。
-- **全链路追踪**：TraceID 跨语言透传（Go ↔ Python），支持在 **SigNoz** 中对每一个 Agent 的输入输出进行秒级审计。
+### 👁️ 多模态逻辑提取 (VLM Integration)
+- **视觉理解**：集成 **Qwen2-VL (vLLM)** 部署于 **NVIDIA RTX A4000**，精准读懂 PDF 中的架构图、流程图及复杂表格。
+- **视觉-语义对齐**：通过上下文引导技术，将视觉逻辑自动转化为图谱中的关系边。
 
-### ⚡ 硬件性能压榨
-- **GPU 算力加速**：深度适配 **RTX 4090/3060** (CUDA)，向量化性能提升 10 倍以上。
-- **大规模环境优化**：针对 128G 内存工作站调优，支持高并发知识库同步。
+### 🚀 工业级异步 ETL 流水线
+- **任务队列**：引入 **Redis + Worker** 异步架构，实现生产级的任务排队处理，彻底释放 i9+4090/A4000 的算力。
+- **指纹增量校验**：基于内容哈希的状态机机制，实现 0 秒级重复文档同步，极大节省 Token 成本。
+- **磁盘自愈**：内置自动清理机制，动态释放 VLM 产生的海量临时文件。
+
+### 🏷️ 热插拔领域本体 (Dynamic Ontology)
+- **领域感知**：Extractor 自动识别文档领域（技术、法律、医疗），动态加载行业专属抽取模具。
+- **全局知识缝合**：基于 ES + 梯度消歧算法实现**跨文档实体对齐**，让孤立的文档自动结成全库知识网。
 
 ---
 
 ## 🛠️ 功能矩阵
 
-| 功能模块 | 🟢 开源社区版 (Community) | 🔵 企业商用版 (Enterprise) |
+| 功能模块 | 🟢 社区版 (OSS) | 🔵 企业版 (EE) |
 | :--- | :--- | :--- |
-| **检索模型** | 向量检索 (Qdrant) | **三路混合召回 (Vector + Graph + ES)** |
-| **对齐策略** | 无 | **符号-拓扑异步对齐 (Entity Linking)** |
-| **数据源** | 本地文件 (PDF/Markdown) | **飞书 / 钉钉 / Web 实时爬取** |
-| **重排算法** | 基础 Cosine 排序 | **多维 Skyline 过滤 (Pareto 最优)** |
-| **文档解析** | Docling (基础模式) | **Tree-T 层次感知 + 表格命题化** |
-| **算力加速** | CPU 运行 | **CUDA GPU 加速 (4090/3060 适配)** |
+| **检索模型** | 向量检索 (Qdrant) | **三路混合召回 (Vector+Graph+ES)** |
+| **多模态** | 基础文本解析 | **VLM 视觉逻辑解析 (A4000 加速)** |
+| **同步效率** | 同步顺序处理 | **异步批量任务队列 (Redis Worker)** |
+| **知识深度** | 单文档图谱 | **跨文档全局实体对齐 (Global Linking)** |
+| **行业适配** | 通用抽取模板 | **动态 Ontology 自适配模具** |
 
 ---
 
-## 🏗️ 目录结构
+## 🏗️ 目录结构 (v0.7.0 更新)
 
 ```text
 Chimera/
-├── deploy/               # 生产级 Docker 编排与 Cloudflare Tunnel 配置
-├── server/               # [Go] 控制面 (SaaS 逻辑、JWT 鉴权、Trace 路由)
-│   ├── cmd/server-ee/    # 🔵 企业版入口 (支持插件自动注入)
-│   └── internal/core/    # 核心 Registry 接口定义
-├── runtime/              # [Python] 推理面 (LangGraph 工作流、混合存储)
-│   ├── core/stores/      # 核心向量库与 ES 适配器
-│   ├── enterprise/       # 🔒 私有核心：NebulaGraph 逻辑、ProPEX 抽取 Agent
-│   └── skills/           # Skyline 重排器、Docling v2 解析器
-└── web/                  # [Vue3 + Arco] 支持知识图谱渲染的前端界面
-```
-
----
+├── runtime/
+│   ├── worker.py         # 🚀 [New] 异步任务消费者
+│   ├── skills/
+│   │   └── vlm_service.py # 🎨 [New] vLLM 视觉推理引擎
+│   ├── prompts/
+│   │   └── domains/       # 🏷️ [New] 垂直领域定义库
+│   └── enterprise/        # 🔒 私有核心：全局消歧算法、领域 Agent
+└── ... (其他结构保持不变)
+````
 
 ## 🚀 快速开始
 
@@ -86,7 +78,10 @@ cd deploy
 ```bash
 cd runtime
 pip install -r requirements.txt
+# 启动推理服务端
 python main.py
+# 启动任务处理 Worker (需 GPU 支持)
+python worker.py
 ```
 > **提示**: 启动后看到 `✅ Nebula Space ... Schema initialized` 即代表图谱引擎就绪。
 
